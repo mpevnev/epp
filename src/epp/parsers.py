@@ -88,14 +88,14 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
     concatenation of individually matched strings, otherwise set it to the last
     matched string.
 
-    Raise ValueError if 'max_hits' is less than 'min_hits'.
+    Raise ValueError if 'max_hits' is above zero and is less than 'min_hits'.
     """
     if min_hits < 0:
         min_hits = 0
     if max_hits < 0:
         max_hits = 0
-    if max_hits < min_hits:
-        raise ValueError("'max_hits' is more that 'min_hits'")
+    if max_hits > 0 and max_hits < min_hits:
+        raise ValueError("'max_hits' is less than 'min_hits'")
     def res(state):
         """ Run a parser several times. """
         pieces = deque()
