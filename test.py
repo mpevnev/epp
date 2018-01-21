@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
+"""
+Unit tests for epp library.
+"""
+
 import unittest
 
 import epp.core as core
 import epp.parsers as par
+
 
 class TestCore(unittest.TestCase):
     """ Test core parsers and functions. """
@@ -57,7 +62,7 @@ class TestCore(unittest.TestCase):
 
     def test_branch_positive_2(self):
         """ Test 'branch' parser generator, positive check #2. """
-        # AKA 'order matters'. 
+        # AKA 'order matters'.
         string = "ab3"
         state = core.State(string)
         parser = core.branch([
@@ -142,10 +147,12 @@ class TestCore(unittest.TestCase):
         """ Test 'chain' parser generator, positive check #1. """
         string = "123"
         state = core.State(string)
-        parser = core.chain([
-            par.literal("1"),
-            par.literal("2"),
-            par.literal("3")],
+        parser = core.chain(
+            [
+                par.literal("1"),
+                par.literal("2"),
+                par.literal("3")
+            ],
             combine=False)
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
@@ -157,10 +164,12 @@ class TestCore(unittest.TestCase):
         """ Test 'chain' parser generator, positive check #2. """
         string = "123"
         state = core.State(string)
-        parser = core.chain([
-            par.literal("1"),
-            par.literal("2"),
-            par.literal("3")],
+        parser = core.chain(
+            [
+                par.literal("1"),
+                par.literal("2"),
+                par.literal("3")
+            ],
             combine=True)
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
@@ -199,11 +208,13 @@ class TestCore(unittest.TestCase):
         """ Test 'stop' parser generator. """
         string = "123"
         state = core.State(string)
-        chain = core.chain([
-            par.literal("1"),
-            par.literal("2"),
-            core.stop(),
-            par.literal("3")],
+        chain = core.chain(
+            [
+                par.literal("1"),
+                par.literal("2"),
+                core.stop(),
+                par.literal("3")
+            ],
             combine=True)
         state_after = core.parse(state, chain)
         self.assertIsNotNone(state_after)
@@ -230,15 +241,65 @@ class TestCore(unittest.TestCase):
         test = lambda state: int(state.parsed) > 10
         string = "12"
         state = core.State(string)
-        parser = core.chain([
-            par.literal("12"),
-            core.test(test)],
+        parser = core.chain(
+            [
+                par.literal("12"),
+                core.test(test)
+            ],
             combine=True)
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
         self.assertEqual(state_after.parsed, "12")
         self.assertEqual(state_after.left, "")
         self.assertIsNone(state_after.value)
+
+
+class TestParsers(unittest.TestCase):
+    """ Test concrete parsers. """
+
+    def test_everything(self):
+        """ Test 'everything' parser generator. """
+        string = "foobar"
+        state = core.State(string)
+        parser = par.everything()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_integer_negative_1(self):
+        """ Test 'integer' parser generator, negative check #1. """
+        string = "foobar"
+        state = core.State(string)
+        parser = par.integer()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_integer_positive_1(self):
+        """ Test 'integer' parser generator, positive check #1. """
+        string = "123foo"
+        state = core.State(string)
+        parser = par.integer(False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state.left, "foo")
+        self.assertEqual(state.parsed, "123")
+
+    def test_integer_positive_2(self):
+        """ Test 'integer' parser generator, positive check #2. """
+        string = "123foo"
+        state = core.State(string)
+        parser = par.integer(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertEqual(state_after.value, 123)
+        self.assertEqual(state.left, "foo")
+        self.assertEqual(state.parsed, "123")
 
 if __name__ == "__main__":
     unittest.main()
