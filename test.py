@@ -361,5 +361,27 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state.left, string)
         self.assertEqual(state.parsed, "")
 
+    def test_many_positive_1(self):
+        """ Test 'many' parser generator, positive check #1. """
+        string = "foofoo"
+        state = core.State(string)
+        parser = par.many(par.literal("foo"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "")
+        self.assertEqual(state_after.parsed, string)
+
+    def test_many_positive_2(self):
+        """ Test 'many' parser generator, positive check #2. """
+        string = "foofoofoo"
+        state = core.State(string)
+        parser = par.many(par.literal("foo"), 1, 2)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "foofoo")
+        self.assertEqual(state_after.left, "foo")
+
 if __name__ == "__main__":
     unittest.main()
