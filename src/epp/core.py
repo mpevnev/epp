@@ -22,6 +22,7 @@ import enum
 
 #--------- base things ---------#
 
+
 class State():
     """ An object representing current parser state. """
 
@@ -61,9 +62,11 @@ class State():
         """
         return State(self.left)
 
+
 class ParsingFailure(Exception):
     """ An exception of this type should be thrown if parsing fails. """
     pass
+
 
 class ParsingEnd(Exception):
     """
@@ -75,10 +78,12 @@ class ParsingEnd(Exception):
         super().__init__()
         self.state = state
 
+
 class Lookahead(enum.Enum):
     """ Lookahead type. """
     GREEDY = enum.auto()
     RELUCTANT = enum.auto()
+
 
 def parse(state_or_string, parser, verbose=False):
     """
@@ -101,7 +106,9 @@ def parse(state_or_string, parser, verbose=False):
     except ParsingEnd as end:
         return end.state
 
+
 #--------- core parsers generators ---------#
+
 
 def absorb(func, parser):
     """
@@ -117,6 +124,7 @@ def absorb(func, parser):
         parsers_output = parser(state.blank())
         return func(state, parsers_output).set(parsed="", left=parsers_output.left)
     return res
+
 
 def branch(funcs):
     """
@@ -134,6 +142,7 @@ def branch(funcs):
                 continue
         raise ParsingFailure("All the parsers in a branching point failed")
     return res
+
 
 def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
     """
@@ -174,6 +183,7 @@ def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
             raise exc
     return res
 
+
 def chain(funcs, combine=True):
     """
     Create a parser that chains a given iterable of parsers together, using
@@ -198,6 +208,7 @@ def chain(funcs, combine=True):
         return state
     return res
 
+
 def fail():
     """ Return a parser that always fails. """
     def res(state):
@@ -205,9 +216,11 @@ def fail():
         raise ParsingFailure("'fail' parser has been reached")
     return res
 
+
 def identity():
     """ Return a parser that passes state unchanged. """
     return lambda state: state.copy()
+
 
 def modify(transformer):
     """
@@ -215,12 +228,14 @@ def modify(transformer):
     """
     return lambda state: transformer(state.copy())
 
+
 def stop():
     """ Return a parser that stops parsing immediately. """
     def res(state):
         """ Stop parsing. """
         raise ParsingEnd(state.copy())
     return res
+
 
 def test(testfn):
     """
@@ -236,11 +251,14 @@ def test(testfn):
         raise ParsingFailure(f"Function {testfn} returned a falsey value on {state.left[0:20]}")
     return res
 
+
 #--------- helper things ---------#
+
 
 def no_lookahead(parser):
     """ Return True if the parser performs no lookahead. """
     return not hasattr(parser, "lookahead")
+
 
 def is_greedy(parser):
     """ Return True if the parser is greedy, False otherwise. """
@@ -249,12 +267,14 @@ def is_greedy(parser):
     except AttributeError:
         return False
 
+
 def is_reluctant(parser):
     """ Return True if the parser is reluctant, False otherwise. """
     try:
         return parser.lookahead is Lookahead.RELUCTANT
     except AttributeError:
         return False
+
 
 def greedy(parser):
     """ Return a greedy version of 'parser'. """
@@ -266,6 +286,7 @@ def greedy(parser):
     res = lambda state: parser(state)
     res.lookahead = Lookahead.GREEDY
     return res
+
 
 def reluctant(parser):
     """ Return a reluctant version of 'parser'. """

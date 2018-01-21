@@ -13,6 +13,7 @@ import epp.core as core
 
 #--------- concrete parsers ---------#
 
+
 def everything():
     """ Return a parser that consumes all remaining input. """
     def res(state):
@@ -22,6 +23,7 @@ def everything():
         output.parsed = state.left
         return output
     return res
+
 
 def integer(alter_state=False):
     """
@@ -48,6 +50,7 @@ def integer(alter_state=False):
         return output
     return res
 
+
 def literal(lit):
     """
     Return a parser that will match a given literal and remove it from input.
@@ -58,6 +61,7 @@ def literal(lit):
             return state.set(left=state.left[len(lit):], parsed=lit)
         raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with '{lit}'")
     return res
+
 
 def maybe(parser):
     """
@@ -73,6 +77,7 @@ def maybe(parser):
         except core.ParsingFailure:
             return state.copy()
     return res
+
 
 def many(parser, min_hits=0, max_hits=0, combine=True):
     """
@@ -121,6 +126,7 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
         return state
     return res
 
+
 def multi(literals):
     """
     Return a parser that will match any of given literals.
@@ -133,6 +139,7 @@ def multi(literals):
         anyof = ", ".join(map(lambda s: f"\"{s}\"", literals))
         raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with any of ({anyof})")
     return res
+
 
 def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     """
