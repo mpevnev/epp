@@ -82,7 +82,7 @@ class TestCore(unittest.TestCase):
         parser = core.catch(inner_parser, [TypeError])
         string = "foobar"
         with self.assertRaises(ValueError):
-            state_after = core.parse(string, parser)
+            core.parse(string, parser)
 
     def test_catch_positive_1(self):
         """ Test 'catch' parser generator, positive check #1. """
@@ -344,6 +344,22 @@ class TestParsers(unittest.TestCase):
         self.assertIsNone(state_after.value)
         self.assertEqual(state_after.parsed, "fo")
         self.assertEqual(state_after.left, "o")
+
+    def test_many_negative_1(self):
+        """ Test 'many' parser generator, negative check #1. """
+        with self.assertRaises(ValueError):
+            _ = par.many(par.literal("1"), 1, 0)
+
+    def test_many_negative_2(self):
+        """ Test 'many' parser generator, negative check #2. """
+        string = "foofoo"
+        state = core.State(string)
+        parser = par.many(par.literal("foo"), 3, 3)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
 
 if __name__ == "__main__":
     unittest.main()
