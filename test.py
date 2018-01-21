@@ -287,8 +287,8 @@ class TestParsers(unittest.TestCase):
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
         self.assertIsNone(state_after.value)
-        self.assertEqual(state.left, "foo")
-        self.assertEqual(state.parsed, "123")
+        self.assertEqual(state_after.left, "foo")
+        self.assertEqual(state_after.parsed, "123")
 
     def test_integer_positive_2(self):
         """ Test 'integer' parser generator, positive check #2. """
@@ -298,8 +298,8 @@ class TestParsers(unittest.TestCase):
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
         self.assertEqual(state_after.value, 123)
-        self.assertEqual(state.left, "foo")
-        self.assertEqual(state.parsed, "123")
+        self.assertEqual(state_after.left, "foo")
+        self.assertEqual(state_after.parsed, "123")
 
 if __name__ == "__main__":
     unittest.main()
