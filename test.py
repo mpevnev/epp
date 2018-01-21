@@ -323,5 +323,27 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "o")
         self.assertEqual(state_after.parsed, "fo")
 
+    def test_maybe_negative_1(self):
+        """ Test 'maybe' parser generator, negative check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.maybe(par.literal("baz"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, string)
+        self.assertEqual(state_after.parsed, "")
+
+    def test_maybe_positive_1(self):
+        """ Test 'maybe' parser generator, positive check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.maybe(par.literal("fo"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "fo")
+        self.assertEqual(state_after.left, "o")
+
 if __name__ == "__main__":
     unittest.main()
