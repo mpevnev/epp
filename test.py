@@ -487,6 +487,39 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state.left, string)
         self.assertEqual(state.parsed, "")
 
+    def test_white_char_negative_3(self):
+        """ Test 'white_char' parser generator, negative check #3. """
+        string = ""
+        state = core.State(string)
+        parser = par.white_char()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_white_char_positive_1(self):
+        """ Test 'white_char' parser generator, positive check #1. """
+        string = " b"
+        state = core.State(string)
+        parser = par.white_char()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "b")
+        self.assertEqual(state_after.parsed, " ")
+
+    def test_white_char_positive_2(self):
+        """ Test 'white_char' parser generator, positive check #2. """
+        string = "\nb"
+        state = core.State(string)
+        parser = par.white_char(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "b")
+        self.assertEqual(state_after.parsed, "\n")
+
 
 if __name__ == "__main__":
     unittest.main()
