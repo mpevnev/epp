@@ -144,6 +144,21 @@ def multi(literals):
     return res
 
 
+def nonwhite_char():
+    """ Return a parser that will match a character of anything but whitespace. """
+    def res(state):
+        """ Match a non-whitespace character. """
+        if state.left == "":
+            raise core.ParsingFailure(
+                "Expected a non-whitespace character, got the end of input")
+        char = state.left[0]
+        if char.isspace():
+            raise core.ParsingFailure(
+                "Got a whitespace character when expecting a non-whitespace one")
+        return state.consume(1)
+    return res
+
+
 def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     """
     Return a parser that will call
@@ -201,7 +216,7 @@ def white_char(accept_newlines=False):
     """
     def res(state):
         """ Match a character of whitespace. """
-        if state.left == []:
+        if state.left == "":
             raise core.ParsingFailure("Expected a whitespace character, got the end of input")
         char = state.left[0]
         if accept_newlines:
