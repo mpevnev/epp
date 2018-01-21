@@ -10,6 +10,9 @@ ones in the 'core' module.
 from collections import deque
 
 import epp.core as core
+# reimport everything from 'core' to avoid having to import both 'core' and 'parsers'
+from epp.core import *
+
 
 #--------- concrete parsers ---------#
 
@@ -188,4 +191,30 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
         else:
             state.parsed = ""
         return state
+    return res
+
+
+def white_char(accept_newlines=False):
+    """
+    Return a parser that will match a character of whitespace, optionally also
+    matching newline characters.
+    """
+    def res(state):
+        """ Match a character of whitespace. """
+        if state.left == []:
+            raise core.ParsingFailure("Expected a whitespace character, got the end of input")
+        char = state.left[0]
+        if accept_newlines:
+            if char.isspace():
+                return state.consume(1)
+            else:
+                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
+        else:
+            if char.isspace():
+                if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
+                    raise core.ParsingFailure(
+                        f"Got a newline character {hex(ord(char))} when not accepting newlines")
+                return state.consume(1)
+            else:
+                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
     return res
