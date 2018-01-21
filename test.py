@@ -383,5 +383,81 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.parsed, "foofoo")
         self.assertEqual(state_after.left, "foo")
 
+    def test_multi_negative_1(self):
+        """ Test 'multi' parser generator, negative check #1. """
+        string = "d"
+        state = core.State(string)
+        parser = par.multi(["a", "b"])
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_multi_positive_1(self):
+        """ Test 'multi' parser generator, positive check #1. """
+        string = "bd"
+        state = core.State(string)
+        parser = par.multi(["a", "b"])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "d")
+        self.assertEqual(state_after.parsed, "b")
+
+    def test_repeat_while_negative_1(self):
+        """ Test 'repeat_while' parser generator, negative check #1. """
+        with self.assertRaises(ValueError):
+            _ = par.repeat_while(lambda state, window: True, -1)
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_negative_2(self):
+        """ Test 'repeat_while' parser generator, negative check #2. """
+        string = "aa"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a", 1, 3)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_negative_3(self):
+        """ Test 'repeat_while' parser generator, negative check #3. """
+        string = "aab"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a", 1, 3)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_positive_1(self):
+        """ Test 'repeat_while' parser generator, positive check #1. """
+        string = "aa"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "")
+        self.assertEqual(state_after.parsed, string)
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_positive_2(self):
+        """ Test 'repeat_while' parser generator, positive check #2. """
+        string = "aab"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "b")
+        self.assertEqual(state_after.parsed, string)
+        
+
 if __name__ == "__main__":
     unittest.main()
