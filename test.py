@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
+"""
+Unit tests for epp library.
+"""
+
 import unittest
 
 import epp.core as core
 import epp.parsers as par
+
 
 class TestCore(unittest.TestCase):
     """ Test core parsers and functions. """
@@ -57,7 +62,7 @@ class TestCore(unittest.TestCase):
 
     def test_branch_positive_2(self):
         """ Test 'branch' parser generator, positive check #2. """
-        # AKA 'order matters'. 
+        # AKA 'order matters'.
         string = "ab3"
         state = core.State(string)
         parser = core.branch([
@@ -77,7 +82,7 @@ class TestCore(unittest.TestCase):
         parser = core.catch(inner_parser, [TypeError])
         string = "foobar"
         with self.assertRaises(ValueError):
-            state_after = core.parse(string, parser)
+            core.parse(string, parser)
 
     def test_catch_positive_1(self):
         """ Test 'catch' parser generator, positive check #1. """
@@ -142,10 +147,12 @@ class TestCore(unittest.TestCase):
         """ Test 'chain' parser generator, positive check #1. """
         string = "123"
         state = core.State(string)
-        parser = core.chain([
-            par.literal("1"),
-            par.literal("2"),
-            par.literal("3")],
+        parser = core.chain(
+            [
+                par.literal("1"),
+                par.literal("2"),
+                par.literal("3")
+            ],
             combine=False)
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
@@ -157,10 +164,12 @@ class TestCore(unittest.TestCase):
         """ Test 'chain' parser generator, positive check #2. """
         string = "123"
         state = core.State(string)
-        parser = core.chain([
-            par.literal("1"),
-            par.literal("2"),
-            par.literal("3")],
+        parser = core.chain(
+            [
+                par.literal("1"),
+                par.literal("2"),
+                par.literal("3")
+            ],
             combine=True)
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
@@ -199,11 +208,13 @@ class TestCore(unittest.TestCase):
         """ Test 'stop' parser generator. """
         string = "123"
         state = core.State(string)
-        chain = core.chain([
-            par.literal("1"),
-            par.literal("2"),
-            core.stop(),
-            par.literal("3")],
+        chain = core.chain(
+            [
+                par.literal("1"),
+                par.literal("2"),
+                core.stop(),
+                par.literal("3")
+            ],
             combine=True)
         state_after = core.parse(state, chain)
         self.assertIsNotNone(state_after)
@@ -230,15 +241,223 @@ class TestCore(unittest.TestCase):
         test = lambda state: int(state.parsed) > 10
         string = "12"
         state = core.State(string)
-        parser = core.chain([
-            par.literal("12"),
-            core.test(test)],
+        parser = core.chain(
+            [
+                par.literal("12"),
+                core.test(test)
+            ],
             combine=True)
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
         self.assertEqual(state_after.parsed, "12")
         self.assertEqual(state_after.left, "")
         self.assertIsNone(state_after.value)
+
+
+class TestParsers(unittest.TestCase):
+    """ Test concrete parsers. """
+
+    def test_everything(self):
+        """ Test 'everything' parser generator. """
+        string = "foobar"
+        state = core.State(string)
+        parser = par.everything()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_integer_negative_1(self):
+        """ Test 'integer' parser generator, negative check #1. """
+        string = "foobar"
+        state = core.State(string)
+        parser = par.integer()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_integer_positive_1(self):
+        """ Test 'integer' parser generator, positive check #1. """
+        string = "123foo"
+        state = core.State(string)
+        parser = par.integer(False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "foo")
+        self.assertEqual(state_after.parsed, "123")
+
+    def test_integer_positive_2(self):
+        """ Test 'integer' parser generator, positive check #2. """
+        string = "123foo"
+        state = core.State(string)
+        parser = par.integer(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertEqual(state_after.value, 123)
+        self.assertEqual(state_after.left, "foo")
+        self.assertEqual(state_after.parsed, "123")
+
+    def test_literal_negative_1(self):
+        """ Test 'literal' parser generator, negative check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.literal("baz")
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_literal_positive_1(self):
+        """ Test 'literal' parser generator, positive check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.literal("fo")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "o")
+        self.assertEqual(state_after.parsed, "fo")
+
+    def test_maybe_negative_1(self):
+        """ Test 'maybe' parser generator, negative check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.maybe(par.literal("baz"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, string)
+        self.assertEqual(state_after.parsed, "")
+
+    def test_maybe_positive_1(self):
+        """ Test 'maybe' parser generator, positive check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.maybe(par.literal("fo"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "fo")
+        self.assertEqual(state_after.left, "o")
+
+    def test_many_negative_1(self):
+        """ Test 'many' parser generator, negative check #1. """
+        with self.assertRaises(ValueError):
+            _ = par.many(par.literal("1"), 1, 0)
+
+    def test_many_negative_2(self):
+        """ Test 'many' parser generator, negative check #2. """
+        string = "foofoo"
+        state = core.State(string)
+        parser = par.many(par.literal("foo"), 3, 3)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_many_positive_1(self):
+        """ Test 'many' parser generator, positive check #1. """
+        string = "foofoo"
+        state = core.State(string)
+        parser = par.many(par.literal("foo"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "")
+        self.assertEqual(state_after.parsed, string)
+
+    def test_many_positive_2(self):
+        """ Test 'many' parser generator, positive check #2. """
+        string = "foofoofoo"
+        state = core.State(string)
+        parser = par.many(par.literal("foo"), 1, 2)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "foofoo")
+        self.assertEqual(state_after.left, "foo")
+
+    def test_multi_negative_1(self):
+        """ Test 'multi' parser generator, negative check #1. """
+        string = "d"
+        state = core.State(string)
+        parser = par.multi(["a", "b"])
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_multi_positive_1(self):
+        """ Test 'multi' parser generator, positive check #1. """
+        string = "bd"
+        state = core.State(string)
+        parser = par.multi(["a", "b"])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "d")
+        self.assertEqual(state_after.parsed, "b")
+
+    def test_repeat_while_negative_1(self):
+        """ Test 'repeat_while' parser generator, negative check #1. """
+        with self.assertRaises(ValueError):
+            _ = par.repeat_while(lambda state, window: True, -1)
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_negative_2(self):
+        """ Test 'repeat_while' parser generator, negative check #2. """
+        string = "aa"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a", 1, 3)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_negative_3(self):
+        """ Test 'repeat_while' parser generator, negative check #3. """
+        string = "aab"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a", 1, 3)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_positive_1(self):
+        """ Test 'repeat_while' parser generator, positive check #1. """
+        string = "aa"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "")
+        self.assertEqual(state_after.parsed, string)
+
+    @unittest.skip("fails with an infinite loop, to be fixed")
+    def test_repeat_while_positive_2(self):
+        """ Test 'repeat_while' parser generator, positive check #2. """
+        string = "aab"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "b")
+        self.assertEqual(state_after.parsed, string)
+        
 
 if __name__ == "__main__":
     unittest.main()
