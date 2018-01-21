@@ -348,7 +348,7 @@ class TestParsers(unittest.TestCase):
     def test_many_negative_1(self):
         """ Test 'many' parser generator, negative check #1. """
         with self.assertRaises(ValueError):
-            _ = par.many(par.literal("1"), 1, 0)
+            _ = par.many(par.literal("1"), 2, 1)
 
     def test_many_negative_2(self):
         """ Test 'many' parser generator, negative check #2. """
@@ -410,7 +410,6 @@ class TestParsers(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = par.repeat_while(lambda state, window: True, -1)
 
-    @unittest.skip("fails with an infinite loop, to be fixed")
     def test_repeat_while_negative_2(self):
         """ Test 'repeat_while' parser generator, negative check #2. """
         string = "aa"
@@ -422,7 +421,6 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state.left, string)
         self.assertEqual(state.parsed, "")
 
-    @unittest.skip("fails with an infinite loop, to be fixed")
     def test_repeat_while_negative_3(self):
         """ Test 'repeat_while' parser generator, negative check #3. """
         string = "aab"
@@ -434,7 +432,6 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state.left, string)
         self.assertEqual(state.parsed, "")
 
-    @unittest.skip("fails with an infinite loop, to be fixed")
     def test_repeat_while_positive_1(self):
         """ Test 'repeat_while' parser generator, positive check #1. """
         string = "aa"
@@ -446,7 +443,6 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "")
         self.assertEqual(state_after.parsed, string)
 
-    @unittest.skip("fails with an infinite loop, to be fixed")
     def test_repeat_while_positive_2(self):
         """ Test 'repeat_while' parser generator, positive check #2. """
         string = "aab"
