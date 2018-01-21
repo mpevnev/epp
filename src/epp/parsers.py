@@ -100,13 +100,13 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
         """ Run a parser several times. """
         pieces = deque()
         for _ in range(min_hits):
-            state = parser(state)
-            if combine:
-                pieces.append(state.parsed)
-            # notice that there's no exception handling here - this way a
-            # thrown exception terminates 'many', which is exactly what we need
-            # here.
-        for _ in range(min_hits, max_hits):
+        state = parser(state)
+        if combine:
+            pieces.append(state.parsed)
+        # notice that there's no exception handling here - this way a
+        # thrown exception terminates 'many', which is exactly what we need.
+        i = min_hits
+        while max_hits == 0 or i < max_hits:
             try:
                 state = parser(state)
                 if combine:
@@ -115,6 +115,7 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
                 if combine:
                     state.parsed = "".join(pieces)
                 return state
+            i += 1
         if combine:
             state.parsed = "".join(pieces)
         return state
