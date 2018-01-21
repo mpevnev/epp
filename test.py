@@ -454,7 +454,7 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "b")
         self.assertEqual(state_after.parsed, "aa")
 
-    def test_repeat_while_positive(self):
+    def test_repeat_while_positive_3(self):
         """ Test 'repeat_while' parser generator, positive check #3. """
         string = "bbb"
         state = core.State(string)
