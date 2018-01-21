@@ -452,7 +452,7 @@ class TestParsers(unittest.TestCase):
         self.assertIsNotNone(state_after)
         self.assertIsNone(state_after.value)
         self.assertEqual(state_after.left, "b")
-        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.parsed, "aa")
         
 
 if __name__ == "__main__":
