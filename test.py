@@ -301,5 +301,27 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "foo")
         self.assertEqual(state_after.parsed, "123")
 
+    def test_literal_negative_1(self):
+        """ Test 'literal' parser generator, negative check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.literal("baz")
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_literal_positive_1(self):
+        """ Test 'literal' parser generator, positive check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = par.literal("fo")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "o")
+        self.assertEqual(state_after.parsed, "fo")
+
 if __name__ == "__main__":
     unittest.main()
