@@ -100,7 +100,7 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
         """ Run a parser several times. """
         pieces = deque()
         for _ in range(min_hits):
-        state = parser(state)
+            state = parser(state)
         if combine:
             pieces.append(state.parsed)
         # notice that there's no exception handling here - this way a
@@ -153,18 +153,32 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     def res(state):
         """ Repeatedly check a condition on windows of given width. """
         state = state.copy()
-        pieces = deque()
         i = 0
+        pos = 0
         while state.left != "":
-            window = state.left[:window_size]
+            window = state.left[pos:pos + window_size]
             if not cond(state, window):
                 if i < min_repetitions:
                     raise core.ParsingFailure("Less than requested minimum of repetitions achieved")
-                if combine:
-                    state.parsed = "".join(pieces)
+                if i > 0:
+                    if combine:
+                        state.parsed = state.left[0:pos]
+                    else:
+                        state.parsed = state.left[pos - window_size:pos]
+                else:
+                    state.parsed = ""
+                state.left = state.left[pos:]
                 return state
             i += 1
-        if combine:
-            state.parsed = "".join(pieces)
+            pos += window_size
+        if i < min_repetitions:
+            raise core.ParsingFailure("Less than requested minimum of repetitions achieved.")
+        if i > 0:
+            if combine:
+                state.parsed = state.left[0:pos]
+            else:
+                state.parsed = state.left[pos - window_size:pos]
+        else:
+            state.parsed = ""
         return state
     return res
