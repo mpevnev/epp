@@ -453,6 +453,17 @@ class TestParsers(unittest.TestCase):
         self.assertIsNone(state_after.value)
         self.assertEqual(state_after.left, "b")
         self.assertEqual(state_after.parsed, "aa")
+
+    def test_repeat_while_positive(self):
+        """ Test 'repeat_while' parser generator, positive check #3. """
+        string = "bbb"
+        state = core.State(string)
+        parser = par.repeat_while(lambda state, window: window == "a")
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, string)
+        self.assertEqual(state_after.parsed, "")
         
 
 if __name__ == "__main__":
