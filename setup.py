@@ -4,7 +4,7 @@ setup(
     name="epp",
     version="0.1",
     package_dir={"": "src"},
-    packages=find_packages("src/epp"),
+    packages=find_packages("src"),
 
     test_suite="test",
 
