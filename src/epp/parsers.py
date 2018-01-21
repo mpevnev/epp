@@ -14,7 +14,68 @@ import epp.core as core
 from epp.core import *
 
 
-#--------- concrete parsers ---------#
+#--------- single-character parsers ---------#
+
+
+def newline():
+    """
+    Return a parser that will match a newline character.
+    
+    For Windows users: this will match a single \\r or \\n from a \\n\\r pair.
+    """
+    def res(state):
+        """ Parse a newline character. """
+        if state.left == "":
+            raise core.ParsingFailure("Expected a newline, got the end of input")
+        char = state.left[0]
+        if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected a newline, got '{char}'")
+    return res
+
+
+def nonwhite_char():
+    """ Return a parser that will match a character of anything but whitespace. """
+    def res(state):
+        """ Match a non-whitespace character. """
+        if state.left == "":
+            raise core.ParsingFailure(
+                "Expected a non-whitespace character, got the end of input")
+        char = state.left[0]
+        if char.isspace():
+            raise core.ParsingFailure(
+                "Got a whitespace character when expecting a non-whitespace one")
+        return state.consume(1)
+    return res
+
+
+def white_char(accept_newlines=False):
+    """
+    Return a parser that will match a character of whitespace, optionally also
+    matching newline characters.
+    """
+    def res(state):
+        """ Match a character of whitespace. """
+        if state.left == "":
+            raise core.ParsingFailure("Expected a whitespace character, got the end of input")
+        char = state.left[0]
+        if accept_newlines:
+            if char.isspace():
+                return state.consume(1)
+            else:
+                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
+        else:
+            if char.isspace():
+                if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
+                    raise core.ParsingFailure(
+                        f"Got a newline character {hex(ord(char))} when not accepting newlines")
+                return state.consume(1)
+            else:
+                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
+    return res
+
+
+#--------- various ---------#
 
 
 def everything():
@@ -144,21 +205,6 @@ def multi(literals):
     return res
 
 
-def nonwhite_char():
-    """ Return a parser that will match a character of anything but whitespace. """
-    def res(state):
-        """ Match a non-whitespace character. """
-        if state.left == "":
-            raise core.ParsingFailure(
-                "Expected a non-whitespace character, got the end of input")
-        char = state.left[0]
-        if char.isspace():
-            raise core.ParsingFailure(
-                "Got a whitespace character when expecting a non-whitespace one")
-        return state.consume(1)
-    return res
-
-
 def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     """
     Return a parser that will call
@@ -206,30 +252,4 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
         else:
             state.parsed = ""
         return state
-    return res
-
-
-def white_char(accept_newlines=False):
-    """
-    Return a parser that will match a character of whitespace, optionally also
-    matching newline characters.
-    """
-    def res(state):
-        """ Match a character of whitespace. """
-        if state.left == "":
-            raise core.ParsingFailure("Expected a whitespace character, got the end of input")
-        char = state.left[0]
-        if accept_newlines:
-            if char.isspace():
-                return state.consume(1)
-            else:
-                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
-        else:
-            if char.isspace():
-                if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
-                    raise core.ParsingFailure(
-                        f"Got a newline character {hex(ord(char))} when not accepting newlines")
-                return state.consume(1)
-            else:
-                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
     return res
