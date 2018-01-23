@@ -40,6 +40,22 @@ def alpha(ascii_only=False):
     return res
 
 
+def digit():
+    """
+    Return a parser that would match a single decimal digit.
+    """
+    def res(state):
+        """ Parse a single decimal digit. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a digit, got the end of input")
+        if '0' <= char <= '9':
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected a digit, got '{char}'")
+    return res
+
+
 def newline():
     """
     Return a parser that will match a newline character.
