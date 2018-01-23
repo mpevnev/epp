@@ -315,6 +315,17 @@ class TestParsers(unittest.TestCase):
 
     def test_newline_negative_1(self):
         """ Test 'newline' parser generator, negative check #1. """
+        string = ""
+        state = core.State(string)
+        parser = par.newline()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, "")
+
+    def test_newline_negative_2(self):
+        """ Test 'newline' parser generator, negative check #2. """
         string = "a"
         state = core.State(string)
         parser = par.newline()
