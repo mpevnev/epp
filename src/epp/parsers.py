@@ -17,17 +17,41 @@ from epp.core import *
 #--------- single-character parsers ---------#
 
 
+def alpha(ascii_only=False):
+    """
+    Return a parser that will match a single alphabetic character.
+
+    If 'ascii_only' is truthy, match only ASCII alphabetic characters, not
+    everything for which .isalpha() returns True.
+    """
+    def res(state):
+        """ Match an alphabetic character. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected an alphabetic character, got the end of input")
+        if ascii_only:
+            if 'a' <= char <= 'z' or 'A' <= char <= 'Z':
+                return state.consume(1)
+            raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
+        if char.isalpha():
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
+    return res
+
+
 def newline():
     """
     Return a parser that will match a newline character.
-    
+
     For Windows users: this will match a single \\r or \\n from a \\n\\r pair.
     """
     def res(state):
         """ Parse a newline character. """
-        if state.left == "":
+        try:
+            char = state.left[0]
+        except IndexError:
             raise core.ParsingFailure("Expected a newline, got the end of input")
-        char = state.left[0]
         if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
             return state.consume(1)
         raise core.ParsingFailure(f"Expected a newline, got '{char}'")
@@ -38,10 +62,11 @@ def nonwhite_char():
     """ Return a parser that will match a character of anything but whitespace. """
     def res(state):
         """ Match a non-whitespace character. """
-        if state.left == "":
+        try:
+            char = state.left[0]
+        except IndexError:
             raise core.ParsingFailure(
                 "Expected a non-whitespace character, got the end of input")
-        char = state.left[0]
         if char.isspace():
             raise core.ParsingFailure(
                 "Got a whitespace character when expecting a non-whitespace one")
@@ -56,9 +81,10 @@ def white_char(accept_newlines=False):
     """
     def res(state):
         """ Match a character of whitespace. """
-        if state.left == "":
+        try:
+            char = state.left[0]
+        except IndexError:
             raise core.ParsingFailure("Expected a whitespace character, got the end of input")
-        char = state.left[0]
         if accept_newlines:
             if char.isspace():
                 return state.consume(1)

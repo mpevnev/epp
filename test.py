@@ -259,6 +259,60 @@ class TestParsers(unittest.TestCase):
 
     #--------- single-character parsers ---------#
 
+    def test_alpha_negative_1(self):
+        """ Test 'alpha' parser generator, negative check #1. """
+        state = core.State("")
+        parser = par.alpha()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, "")
+
+    def test_alpha_negative_2(self):
+        """ Test 'alpha' parser generator, negative check #2. """
+        string = "1"
+        state = core.State(string)
+        parser = par.alpha()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_alpha_negative_3(self):
+        """ Test 'alpha' parser generator, negative check #3. """
+        string = "\U000000DF" # Eszet
+        state = core.State(string)
+        parser = par.alpha(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_alpha_positive_1(self):
+        """ Test 'alpha' parser generator, positive check #1. """
+        string = "ab"
+        state = core.State(string)
+        parser = par.alpha(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "a")
+        self.assertEqual(state_after.left, "b")
+
+    def test_alpha_positive_2(self):
+        """ Test 'alpha' parser generator, positive check #2. """
+        string = "\U000000DFb"
+        state = core.State(string)
+        parser = par.alpha(False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "\U000000DF")
+        self.assertEqual(state_after.left, "b")
+
     def test_newline_negative_1(self):
         """ Test 'newline' parser generator, negative check #1. """
         string = "a"
