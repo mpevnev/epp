@@ -232,10 +232,17 @@ def modify(transformer):
     return lambda state: transformer(state.copy()).set(parsed="")
 
 
-def stop():
-    """ Return a parser that stops parsing immediately. """
+def stop(discard=False):
+    """
+    Return a parser that stops parsing immediately.
+    
+    Note that the thrown ParsingEnd exception will have the copy of the last
+    successful parser's State.
+    """
     def res(state):
         """ Stop parsing. """
+        if discard:
+            raise ParsingEnd(state.set(parsed=""))
         raise ParsingEnd(state.copy())
     return res
 
