@@ -17,6 +17,29 @@ from epp.core import *
 #--------- single-character parsers ---------#
 
 
+def alnum(ascii_only=False):
+    """
+    Return a parser that will match a single alphanumeric character.
+
+    If 'ascii_only' is truthy, match only ASCII alphanumeric characters
+    ([a-zA-Z0-9]), not whatever makes .isalnum() return True.
+    """
+    def res(state):
+        """ Match an alphanumeric character. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected an alphanumeric character, got the end of input")
+        if ascii_only:
+            if 'a' <= char <= 'z' or 'A' <= char <= 'Z' or '0' <= char <= '9':
+                return state.consume(1)
+            raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
+        if char.isalnum():
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
+    return res
+
+
 def alpha(ascii_only=False):
     """
     Return a parser that will match a single alphabetic character.

@@ -259,6 +259,61 @@ class TestParsers(unittest.TestCase):
 
     #--------- single-character parsers ---------#
 
+    def test_alnum_negative_1(self):
+        """ Test 'alnum' parser generator, negative check #1. """
+        string = ""
+        state = core.State(string)
+        parser = par.alnum()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, "")
+        self.assertEqual(state.parsed, "")
+
+    def test_alnum_negative_2(self):
+        """ Test 'alnum' parser generator, negative check #2. """
+        string = '_'
+        state = core.State(string)
+        parser = par.alnum(False)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_alnum_negative_3(self):
+        """ Test 'alnum' parser generator, negative check #3. """
+        string = "\U000000DF" # Eszet
+        state = core.State(string)
+        parser = par.alnum(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_alnum_positive_1(self):
+        """ Test 'alnum' parser generator, positive check #1. """
+        string = "1a"
+        state = core.State(string)
+        parser = core.chain([par.alnum(), par.alnum()], True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_alnum_positive_2(self):
+        """ Test 'alnum' parser generator, positive check #2. """
+        string = "\U000000DF" # Eszet
+        state = core.State(string)
+        parser = par.alnum(False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
     def test_alpha_negative_1(self):
         """ Test 'alpha' parser generator, negative check #1. """
         state = core.State("")
