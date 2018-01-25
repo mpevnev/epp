@@ -590,6 +590,39 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "foo")
         self.assertEqual(state_after.parsed, "123")
 
+    def test_line_negative_1(self):
+        """ Test 'line' parser generator, negative check #1. """
+        string = ""
+        state = core.State(string)
+        parser = par.line()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, string)
+
+    def test_line_positive_1(self):
+        """ Test 'line' parser generator, positive check #1. """
+        string = "asdf\ndd"
+        state = core.State(string)
+        parser = par.line(False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertEqual(state_after.left, "dd")
+        self.assertEqual(state_after.parsed, "asdf")
+        self.assertIsNone(state_after.value)
+
+    def test_line_positive_2(self):
+        """ Test 'line' parser generator, positive check #2. """
+        string = "asdf\ndd"
+        state = core.State(string)
+        parser = par.line(True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertEqual(state_after.left, "dd")
+        self.assertEqual(state_after.parsed, "asdf\n")
+        self.assertIsNone(state_after.value)
+
     #--------- various ---------#
 
     def test_everything(self):

@@ -103,7 +103,7 @@ def newline():
             char = state.left[0]
         except IndexError:
             raise core.ParsingFailure("Expected a newline, got the end of input")
-        if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
+        if ord(char) in _LINE_SEPARATORS:
             return state.consume(1)
         raise core.ParsingFailure(f"Expected a newline, got '{char}'")
     return res
@@ -143,7 +143,7 @@ def white_char(accept_newlines=False):
                 raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
         else:
             if char.isspace():
-                if ord(char) in [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]:
+                if ord(char) in _LINE_SEPARATORS:
                     raise core.ParsingFailure(
                         f"Got a newline character {hex(ord(char))} when not accepting newlines")
                 return state.consume(1)
@@ -174,8 +174,26 @@ def line(keep_newline=False):
 
     If 'keep_newline' is truthy, the terminating newline will be retained in
     the 'parsed' field of the resulting State object, otherwise it won't be.
+    The newline is removed from the input in any case.
     """
-    pass
+    def res(state):
+        """ Match a line optionally terminated by a newline character. """
+        pos = 0
+        length = len(state.left)
+        if length == 0:
+            raise core.ParsingFailure("Expected a line, got an end of input")
+        while pos < length:
+            char = state.left[pos]
+            if ord(char) in _LINE_SEPARATORS:
+                if keep_newline:
+                    pos += 1
+                break
+            pos += 1
+        if keep_newline:
+            return state.consume(pos)
+        output = state.set(parsed=state.left[:pos], left=state.left[pos+1:])
+        return output
+    return res
 
 
 #--------- various ---------#
@@ -330,3 +348,8 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
             state.parsed = ""
         return state
     return res
+
+
+#--------- helper things ---------#
+
+_LINE_SEPARATORS = [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]
