@@ -225,8 +225,11 @@ def identity():
 def modify(transformer):
     """
     Return a parser that, when run, modifies chain state.
+
+    Note that 'parsed' of the resulting State object will be overwritten with
+    an empty string.
     """
-    return lambda state: transformer(state.copy())
+    return lambda state: transformer(state.copy()).set(parsed="")
 
 
 def stop():
