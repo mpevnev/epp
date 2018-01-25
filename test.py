@@ -535,6 +535,17 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state.left, string)
         self.assertEqual(state.parsed, "")
 
+    def test_integer_negative_2(self):
+        """ Test 'integer' parser generator, negative check #2. """
+        string = ""
+        state = core.State(string)
+        parser = par.integer()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
     def test_integer_positive_1(self):
         """ Test 'integer' parser generator, positive check #1. """
         string = "123foo"
