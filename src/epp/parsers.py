@@ -140,6 +140,22 @@ def white_char(accept_newlines=False):
     return res
 
 
+#--------- aggregates and variations of the above ---------#
+
+
+def integer(alter_state=False):
+    """
+    Return a parser that will match integers in base 10.
+
+    If 'alter_state' is set to a true value, replace state's value with the
+    parsed integer, otherwise leave it alone.
+    """
+    res = many(digit(), 1)
+    if alter_state:
+        res = core.chain([res, core.modify(lambda s: s.set(value=int(s.parsed)))])
+    return res
+
+
 #--------- various ---------#
 
 
@@ -150,32 +166,6 @@ def everything():
         output = state.copy()
         output.left = ""
         output.parsed = state.left
-        return output
-    return res
-
-
-def integer(alter_state=False):
-    """
-    Return a parser that will match integers in base 10.
-
-    If 'alter_state' is set to a true value, replace state's value with the
-    parsed integer, otherwise leave it alone.
-    """
-    def res(state):
-        """ Match an integer. """
-        zero = ord("0")
-        nine = ord("9")
-        length = len(state.left)
-        consumed = 0
-        for consumed in range(length):
-            curchar = state.left[consumed]
-            if not zero <= ord(curchar) <= nine:
-                break
-        if consumed == 0:
-            raise core.ParsingFailure("'{state.left[0:20]}' doesn't start with an integer")
-        output = state.consume(consumed)
-        if alter_state:
-            output.value = int(state.left[:consumed])
         return output
     return res
 

@@ -522,18 +522,7 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "b")
         self.assertEqual(state_after.parsed, "\n")
 
-    #--------- various ---------#
-
-    def test_everything(self):
-        """ Test 'everything' parser generator. """
-        string = "foobar"
-        state = core.State(string)
-        parser = par.everything()
-        state_after = core.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, string)
-        self.assertEqual(state_after.left, "")
+    #--------- aggregates and variations of the above ---------#
 
     def test_integer_negative_1(self):
         """ Test 'integer' parser generator, negative check #1. """
@@ -567,6 +556,19 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.value, 123)
         self.assertEqual(state_after.left, "foo")
         self.assertEqual(state_after.parsed, "123")
+
+    #--------- various ---------#
+
+    def test_everything(self):
+        """ Test 'everything' parser generator. """
+        string = "foobar"
+        state = core.State(string)
+        parser = par.everything()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
 
     def test_literal_negative_1(self):
         """ Test 'literal' parser generator, negative check #1. """
