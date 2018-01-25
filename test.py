@@ -368,6 +368,28 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.parsed, "\U000000DF")
         self.assertEqual(state_after.left, "b")
 
+    def test_any_char_negative_1(self):
+        """ Test 'any_char' parser generator, negative check #1. """
+        string = ""
+        state = core.State(string)
+        parser = par.any_char()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.left, string)
+        self.assertEqual(state.parsed, "")
+
+    def test_any_char_positive_1(self):
+        """ Test 'any_char' parser generator, positive check #1. """
+        string = "adsf"
+        state = core.State(string)
+        parser = par.any_char()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "dsf")
+        self.assertEqual(state_after.parsed, "a")
+
     def test_digit_negative_1(self):
         """ Test 'digit' parser generator, negative check #1. """
         string = ""

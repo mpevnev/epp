@@ -63,6 +63,18 @@ def alpha(ascii_only=False):
     return res
 
 
+def any_char():
+    """ Return a parser that would match any character. """
+    def res(state):
+        """ Match a single character. """
+        try:
+            _ = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a character, got the end of input")
+        return state.consume(1)
+    return res
+
+
 def digit():
     """
     Return a parser that would match a single decimal digit.
@@ -154,6 +166,16 @@ def integer(alter_state=False):
     if alter_state:
         res = core.chain([res, core.modify(lambda s: s.set(value=int(s.parsed)))])
     return res
+
+
+def line(keep_newline=False):
+    """
+    Return a parser that will match a line terminated by a newline.
+
+    If 'keep_newline' is truthy, the terminating newline will be retained in
+    the 'parsed' field of the resulting State object, otherwise it won't be.
+    """
+    pass
 
 
 #--------- various ---------#
