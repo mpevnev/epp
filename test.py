@@ -177,6 +177,17 @@ class TestCore(unittest.TestCase):
         self.assertEqual(state_after.parsed, string)
         self.assertEqual(state_after.left, "")
 
+    def test_chain_positive_3(self):
+        """ Test 'chain' parser generator, positive check #3. """
+        string = "123"
+        state = core.State(string)
+        parser = core.chain((par.digit() for i in range(10)), stop_on_failure=True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.left, "")
+        self.assertEqual(state_after.parsed, string)
+
     def test_fail(self):
         """ Test 'fail' parser generator. """
         string = "irrelevant"
