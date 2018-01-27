@@ -213,7 +213,7 @@ def end_of_input():
     def res(state):
         """ Match the end of input. """
         if state.left == "":
-            return state.copy()
+            return state.set(parsed="")
         raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
     return res
 
