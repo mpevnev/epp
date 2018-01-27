@@ -196,6 +196,14 @@ def line(keep_newline=False):
     return res
 
 
+def whitespace(min_num=1, accept_newlines=False):
+    """
+    Return a parser that will consume at least 'min_num' whitespace characters,
+    optionally with newlines as well.
+    """
+    return many(white_char(accept_newlines), min_num)
+
+
 #--------- various ---------#
 
 

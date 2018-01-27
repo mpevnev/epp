@@ -634,6 +634,72 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.parsed, "asdf\n")
         self.assertIsNone(state_after.value)
 
+    def test_whitespace_negative_1(self):
+        """ Test 'whitespace' parser generator, negative check #1. """
+        string = ""
+        state = core.State(string)
+        parser = par.whitespace()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, string)
+
+    def test_whitespace_negative_2(self):
+        """ Test 'whitespace' parser generator, negative check #2. """
+        string = "\n"
+        state = core.State(string)
+        parser = par.whitespace(1, False)
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, string)
+
+    def test_whitespace_negative_3(self):
+        """ Test 'whitespace' parser generator, negative check #3. """
+        string = "b"
+        state = core.State(string)
+        parser = par.whitespace()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, string)
+
+    def test_whitespace_positive_1(self):
+        """ Test 'whitespace' parser generator, positive check #1. """
+        string = " \t b"
+        state = core.State(string)
+        parser = par.whitespace()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, " \t ")
+        self.assertEqual(state_after.left, "b")
+
+    def test_whitespace_positive_2(self):
+        """ Test 'whitespace' parser generator, positive check #2. """
+        string = " \n a"
+        state = core.State(string)
+        parser = par.whitespace(1, True)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, " \n ")
+        self.assertEqual(state_after.left, "a")
+
+    def test_whitespace_positive_3(self):
+        """ Test 'whitespace' parser generator, positive check #3. """
+        string = "b"
+        state = core.State(string)
+        parser = par.whitespace(0)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "")
+        self.assertEqual(state_after.left, string)
+
     #--------- various ---------#
 
     def test_end_of_input_negative_1(self):
