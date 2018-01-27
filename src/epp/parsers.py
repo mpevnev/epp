@@ -8,6 +8,7 @@ ones in the 'core' module.
 """
 
 from collections import deque
+import itertools as itools
 
 import epp.core as core
 # reimport everything from 'core' to avoid having to import both 'core' and 'parsers'
@@ -278,30 +279,17 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
         max_hits = 0
     if max_hits > 0 and max_hits < min_hits:
         raise ValueError("'max_hits' is less than 'min_hits'")
-    def res(state):
-        """ Run a parser several times. """
-        pieces = deque()
-        for _ in range(min_hits):
-            state = parser(state)
-        if combine:
-            pieces.append(state.parsed)
-        # notice that there's no exception handling here - this way a
-        # thrown exception terminates 'many', which is exactly what we need.
-        i = min_hits
-        while max_hits == 0 or i < max_hits:
-            try:
-                state = parser(state)
-                if combine:
-                    pieces.append(state.parsed)
-            except core.ParsingFailure:
-                if combine:
-                    state.parsed = "".join(pieces)
-                return state
-            i += 1
-        if combine:
-            state.parsed = "".join(pieces)
-        return state
-    return res
+    if min_hits > 0:
+        must = core.chain((parser for i in range(min_hits)), combine)
+    else:
+        must = None
+    if max_hits > 0:
+        might = core.chain((parser for i in range(max_hits - min_hits)), combine, True)
+    else:
+        might = core.chain(itools.repeat(parser), combine, True)
+    if must is None:
+        return might
+    return core.chain([must, might], combine)
 
 
 def multi(literals):
