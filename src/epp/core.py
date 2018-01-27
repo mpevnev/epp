@@ -247,9 +247,9 @@ def modify(transformer):
 def stop(discard=False):
     """
     Return a parser that stops parsing immediately.
-    
+
     Note that the thrown ParsingEnd exception will have the copy of the last
-    successful parser's State.
+    successful parser's State, unless 'discard' is truthy.
     """
     def res(state):
         """ Stop parsing. """
