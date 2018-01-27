@@ -244,6 +244,16 @@ def modify(transformer):
     return lambda state: transformer(state.copy()).set(parsed="")
 
 
+def noconsume(parser):
+    """ Return a version of 'parser' that doesn't consume input. """
+    def res(state):
+        """ Parse without consuming input. """
+        output = parser(state)
+        output.left = state.left
+        return output
+    return res
+
+
 def stop(discard=False):
     """
     Return a parser that stops parsing immediately.

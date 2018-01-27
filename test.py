@@ -215,6 +215,17 @@ class TestCore(unittest.TestCase):
         self.assertEqual(state_after.left, string)
         self.assertEqual(state_after.parsed, "")
 
+    def test_noconsume(self):
+        """ Test 'noconsume' parser generator. """
+        string = "foo"
+        state = core.State(string)
+        parser = core.noconsume(par.literal("foo"))
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, string)
+
     def test_stop(self):
         """ Test 'stop' parser generator. """
         string = "123"
