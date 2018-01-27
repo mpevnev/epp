@@ -245,6 +245,17 @@ def identity():
     return lambda state: state.copy()
 
 
+def lazy(generator, *args, **kwargs):
+    """
+    Make 'generator' lazy. It will only be called when it's time to actually
+    parse a string. Useful for recursive parsers.
+    """
+    def res(state):
+        parser = generator(*args, **kwargs)
+        return parser(state)
+    return res
+
+
 def modify(transformer):
     """
     Return a parser that, when run, modifies chain state.

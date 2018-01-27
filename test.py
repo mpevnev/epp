@@ -204,6 +204,22 @@ class TestCore(unittest.TestCase):
         state_after = core.parse(state, parser)
         self.assertEqual(state_after, state)
 
+    def test_lazy(self):
+        """ Test 'lazy' parser generator. """
+        def generator():
+            """ Return a recursive parser. """
+            maybe_end = core.branch([par.end_of_input(), core.lazy(generator)])
+            return core.chain([par.literal("1"), maybe_end])
+        string = "111"
+        state = core.State(string)
+        parser = generator()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+
     def test_modify(self):
         """ Test 'modify' parser generator. """
         string = "doesn't change"
