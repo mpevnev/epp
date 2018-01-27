@@ -62,6 +62,18 @@ class State():
         """
         return State(self.left)
 
+    def split(self, at):
+        """
+        Split the State object in two. Return a tuple with two State objects,
+        the first will have 'left' up to, but not including, index 'at', the
+        second - starting with 'at' and until the end.
+        """
+        first = self.copy()
+        first.left = self.left[:at]
+        second = self.copy()
+        second.left = self.left[at:]
+        return first, second
+
 
 class ParsingFailure(Exception):
     """ An exception of this type should be thrown if parsing fails. """
@@ -200,24 +212,23 @@ def chain(funcs, combine=True, stop_on_failure=False):
     def res(state):
         """ A chain of parsers. """
         pieces = deque() if combine else None
+        def ifcombine(state):
+            """ Modify 'parsed' if 'combine' is truthy. """
+            if combine:
+                state.parsed = "".join(pieces)
+            return state
         for parser in funcs:
             try:
                 state = parser(state)
                 if combine:
                     pieces.append(state.parsed)
             except ParsingEnd as end:
-                if combine:
-                    end.state.parsed = "".join(pieces)
-                return end.state
+                return ifcombine(end.state)
             except ParsingFailure as failure:
                 if stop_on_failure:
-                    if combine:
-                        state.parsed = "".join(pieces)
-                    return state
+                    return ifcombine(state)
                 raise failure
-        if combine:
-            state.parsed = "".join(pieces)
-        return state
+        return ifcombine(state)
     return res
 
 
