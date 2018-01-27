@@ -636,6 +636,28 @@ class TestParsers(unittest.TestCase):
 
     #--------- various ---------#
 
+    def test_end_of_input_negative_1(self):
+        """ Test 'end_of_input' parser generator, negative check #1. """
+        string = "a"
+        state = core.State(string)
+        parser = par.end_of_input()
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, string)
+
+    def test_end_of_input_positive_1(self):
+        """ Test 'end_of_input' parser generator, positive check #2. """
+        string = ""
+        state = core.State(string)
+        parser = par.end_of_input()
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "")
+        self.assertEqual(state_after.left, "")
+
     def test_everything(self):
         """ Test 'everything' parser generator. """
         string = "foobar"

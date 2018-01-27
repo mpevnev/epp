@@ -199,6 +199,16 @@ def line(keep_newline=False):
 #--------- various ---------#
 
 
+def end_of_input():
+    """ Return a parser that matches only if there is no input left. """
+    def res(state):
+        """ Match the end of input. """
+        if state.left == "":
+            return state.copy()
+        raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
+    return res
+
+
 def everything():
     """ Return a parser that consumes all remaining input. """
     def res(state):
