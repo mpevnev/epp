@@ -10,19 +10,149 @@ ones in the 'core' module.
 from collections import deque
 
 import epp.core as core
+# reimport everything from 'core' to avoid having to import both 'core' and 'parsers'
+from epp.core import *
 
-#--------- concrete parsers ---------#
+
+#--------- single-character parsers ---------#
 
 
-def everything():
-    """ Return a parser that consumes all remaining input. """
+def alnum(ascii_only=False):
+    """
+    Return a parser that will match a single alphanumeric character.
+
+    If 'ascii_only' is truthy, match only ASCII alphanumeric characters
+    ([a-zA-Z0-9]), not whatever makes .isalnum() return True.
+    """
     def res(state):
-        """ Consume all remaining input. """
-        output = state.copy()
-        output.left = ""
-        output.parsed = state.left
-        return output
+        """ Match an alphanumeric character. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected an alphanumeric character, got the end of input")
+        if ascii_only:
+            if 'a' <= char <= 'z' or 'A' <= char <= 'Z' or '0' <= char <= '9':
+                return state.consume(1)
+            raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
+        if char.isalnum():
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
     return res
+
+
+def alpha(ascii_only=False):
+    """
+    Return a parser that will match a single alphabetic character.
+
+    If 'ascii_only' is truthy, match only ASCII alphabetic characters, not
+    everything for which .isalpha() returns True.
+    """
+    def res(state):
+        """ Match an alphabetic character. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected an alphabetic character, got the end of input")
+        if ascii_only:
+            if 'a' <= char <= 'z' or 'A' <= char <= 'Z':
+                return state.consume(1)
+            raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
+        if char.isalpha():
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
+    return res
+
+
+def any_char():
+    """ Return a parser that would match any character. """
+    def res(state):
+        """ Match a single character. """
+        try:
+            _ = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a character, got the end of input")
+        return state.consume(1)
+    return res
+
+
+def digit():
+    """
+    Return a parser that would match a single decimal digit.
+    """
+    def res(state):
+        """ Parse a single decimal digit. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a digit, got the end of input")
+        if '0' <= char <= '9':
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected a digit, got '{char}'")
+    return res
+
+
+def newline():
+    """
+    Return a parser that will match a newline character.
+
+    For Windows users: this will match a single \\r or \\n from a \\n\\r pair.
+    """
+    def res(state):
+        """ Parse a newline character. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a newline, got the end of input")
+        if ord(char) in _LINE_SEPARATORS:
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected a newline, got '{char}'")
+    return res
+
+
+def nonwhite_char():
+    """ Return a parser that will match a character of anything but whitespace. """
+    def res(state):
+        """ Match a non-whitespace character. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure(
+                "Expected a non-whitespace character, got the end of input")
+        if char.isspace():
+            raise core.ParsingFailure(
+                "Got a whitespace character when expecting a non-whitespace one")
+        return state.consume(1)
+    return res
+
+
+def white_char(accept_newlines=False):
+    """
+    Return a parser that will match a character of whitespace, optionally also
+    matching newline characters.
+    """
+    def res(state):
+        """ Match a character of whitespace. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a whitespace character, got the end of input")
+        if accept_newlines:
+            if char.isspace():
+                return state.consume(1)
+            else:
+                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
+        else:
+            if char.isspace():
+                if ord(char) in _LINE_SEPARATORS:
+                    raise core.ParsingFailure(
+                        f"Got a newline character {hex(ord(char))} when not accepting newlines")
+                return state.consume(1)
+            else:
+                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
+    return res
+
+
+#--------- aggregates and variations of the above ---------#
 
 
 def integer(alter_state=False):
@@ -32,21 +162,68 @@ def integer(alter_state=False):
     If 'alter_state' is set to a true value, replace state's value with the
     parsed integer, otherwise leave it alone.
     """
+    res = many(digit(), 1)
+    if alter_state:
+        res = core.chain([res, core.modify(lambda s: s.set(value=int(s.parsed)))])
+    return res
+
+
+def line(keep_newline=False):
+    """
+    Return a parser that will match a line terminated by a newline.
+
+    If 'keep_newline' is truthy, the terminating newline will be retained in
+    the 'parsed' field of the resulting State object, otherwise it won't be.
+    The newline is removed from the input in any case.
+    """
     def res(state):
-        """ Match an integer. """
-        zero = ord("0")
-        nine = ord("9")
+        """ Match a line optionally terminated by a newline character. """
+        pos = 0
         length = len(state.left)
-        consumed = 0
-        for consumed in range(length):
-            curchar = state.left[consumed]
-            if not zero <= ord(curchar) <= nine:
+        if length == 0:
+            raise core.ParsingFailure("Expected a line, got an end of input")
+        while pos < length:
+            char = state.left[pos]
+            if ord(char) in _LINE_SEPARATORS:
+                if keep_newline:
+                    pos += 1
                 break
-        if consumed == 0:
-            raise core.ParsingFailure("'{state.left[0:20]}' doesn't start with an integer")
-        output = state.consume(consumed)
-        if alter_state:
-            output.value = int(state.left[:consumed])
+            pos += 1
+        if keep_newline:
+            return state.consume(pos)
+        output = state.set(parsed=state.left[:pos], left=state.left[pos+1:])
+        return output
+    return res
+
+
+def whitespace(min_num=1, accept_newlines=False):
+    """
+    Return a parser that will consume at least 'min_num' whitespace characters,
+    optionally with newlines as well.
+    """
+    return many(white_char(accept_newlines), min_num)
+
+
+#--------- various ---------#
+
+
+def end_of_input():
+    """ Return a parser that matches only if there is no input left. """
+    def res(state):
+        """ Match the end of input. """
+        if state.left == "":
+            return state.copy()
+        raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
+    return res
+
+
+def everything():
+    """ Return a parser that consumes all remaining input. """
+    def res(state):
+        """ Consume all remaining input. """
+        output = state.copy()
+        output.left = ""
+        output.parsed = state.left
         return output
     return res
 
@@ -189,3 +366,8 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
             state.parsed = ""
         return state
     return res
+
+
+#--------- helper things ---------#
+
+_LINE_SEPARATORS = [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]

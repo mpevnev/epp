@@ -184,10 +184,18 @@ def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
     return res
 
 
-def chain(funcs, combine=True):
+def chain(funcs, combine=True, stop_on_failure=False):
     """
     Create a parser that chains a given iterable of parsers together, using
     output of one parser as input for another.
+
+    If 'combine' is truthy, combine 'parsed's of the parsers in the chain,
+    otherwise use the last one.
+
+    If 'stop_on_failure' is truthy, stop parsing instead of failing it when a
+    parser in the chain raises a ParsingFailure exception. This should be used
+    with extreme caution if several layers of nested parsers are used, as the
+    end result may not be what you expect.
     """
     def res(state):
         """ A chain of parsers. """
@@ -202,6 +210,10 @@ def chain(funcs, combine=True):
                     end.state.parsed = "".join(pieces)
                 return end.state
             except ParsingFailure as failure:
+                if stop_on_failure:
+                    if combine:
+                        state.parsed = "".join(pieces)
+                    return state
                 raise failure
         if combine:
             state.parsed = "".join(pieces)
@@ -225,14 +237,34 @@ def identity():
 def modify(transformer):
     """
     Return a parser that, when run, modifies chain state.
+
+    Note that 'parsed' of the resulting State object will be overwritten with
+    an empty string.
     """
-    return lambda state: transformer(state.copy())
+    return lambda state: transformer(state.copy()).set(parsed="")
 
 
-def stop():
-    """ Return a parser that stops parsing immediately. """
+def noconsume(parser):
+    """ Return a version of 'parser' that doesn't consume input. """
+    def res(state):
+        """ Parse without consuming input. """
+        output = parser(state)
+        output.left = state.left
+        return output
+    return res
+
+
+def stop(discard=False):
+    """
+    Return a parser that stops parsing immediately.
+
+    Note that the thrown ParsingEnd exception will have the copy of the last
+    successful parser's State, unless 'discard' is truthy.
+    """
     def res(state):
         """ Stop parsing. """
+        if discard:
+            raise ParsingEnd(state.set(parsed=""))
         raise ParsingEnd(state.copy())
     return res
 
@@ -248,7 +280,7 @@ def test(testfn):
         """ State testing function. """
         if testfn(state):
             return state.set(parsed="")
-        raise ParsingFailure(f"Function {testfn} returned a falsey value on {state.left[0:20]}")
+        raise ParsingFailure(f"Function {testfn} returned a falsey value on '{state.left[0:20]}'")
     return res
 
 
