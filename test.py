@@ -648,7 +648,7 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state.left, string)
 
     def test_end_of_input_positive_1(self):
-        """ Test 'end_of_input' parser generator, positive check #2. """
+        """ Test 'end_of_input' parser generator, positive check #1. """
         string = ""
         state = core.State(string)
         parser = par.end_of_input()
