@@ -270,7 +270,7 @@ def test(testfn):
         """ State testing function. """
         if testfn(state):
             return state.set(parsed="")
-        raise ParsingFailure(f"Function {testfn} returned a falsey value on {state.left[0:20]}")
+        raise ParsingFailure(f"Function {testfn} returned a falsey value on '{state.left[0:20]}'")
     return res
 
 
