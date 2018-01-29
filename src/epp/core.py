@@ -373,7 +373,7 @@ def _overrestricted(parser):
     """ Return True if a parser is maximally restricted. """
     # isinstance may not be idiomatic, but it's safer than relying on parsers
     # not having a particular method.
-    if not isinstance(parser, RestrictedParser):
+    if not isinstance(parser, _RestrictedParser):
         return True
     return parser.overrestricted()
 
@@ -393,14 +393,14 @@ def _restrict_more(parser):
     Further restrict a parser. A no-op when used on a parser that performs no
     lookahead.
     """
-    if not isinstance(parser, RestrictedParser):
+    if not isinstance(parser, _RestrictedParser):
         return
     parser.restrict_more()
 
 
 def _reset(parser):
     """ Reset restrictions on a parser. """
-    if not isinstance(parser, RestrictedParser):
+    if not isinstance(parser, _RestrictedParser):
         return
     parser.reset()
 
