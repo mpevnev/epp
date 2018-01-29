@@ -205,29 +205,18 @@ def chain(funcs, combine=True, stop_on_failure=False):
     otherwise use the last one.
 
     If 'stop_on_failure' is truthy, stop parsing instead of failing it when a
-    parser in the chain raises a ParsingFailure exception. This should be used
-    with extreme caution if several layers of nested parsers are used, as the
-    end result may not be what you expect.
+    parser in the chain raises a ParsingFailure exception.
     """
     def res(state):
         """ A chain of parsers. """
         pieces = deque() if combine else None
         def ifcombine(state):
-            """ Modify 'parsed' if 'combine' is truthy. """
+            """ Concatenate 'parsed's if 'combine' is truthy. """
             if combine:
                 state.parsed = "".join(pieces)
             return state
         for parser in funcs:
-            try:
-                state = parser(state)
-                if combine:
-                    pieces.append(state.parsed)
-            except ParsingEnd as end:
-                return ifcombine(end.state)
-            except ParsingFailure as failure:
-                if stop_on_failure:
-                    return ifcombine(state)
-                raise failure
+            pass
         return ifcombine(state)
     return res
 
@@ -251,6 +240,7 @@ def lazy(generator, *args, **kwargs):
     parse a string. Useful for recursive parsers.
     """
     def res(state):
+        """ Lazily create a parser. """
         parser = generator(*args, **kwargs)
         return parser(state)
     return res
@@ -309,9 +299,24 @@ def test(testfn):
 #--------- helper things ---------#
 
 
+def get_lookahead(parser):
+    """
+    Return lookahead mode of the parser or None if it doesn't perform lookahead.
+    """
+    try:
+        return parser.lookahead
+    except AttributeError:
+        return None
+
+
 def no_lookahead(parser):
     """ Return True if the parser performs no lookahead. """
     return not hasattr(parser, "lookahead")
+
+
+def has_lookahead(parser):
+    """ Return True if the parser has the ability to perform lookahead. """
+    return hasattr(parser, "lookahead")
 
 
 def is_greedy(parser):
@@ -352,3 +357,159 @@ def reluctant(parser):
     res = lambda state: parser(state)
     res.lookahead = Lookahead.RELUCTANT
     return res
+
+
+#--------- private helper things ---------#
+
+
+def _chain_reset(parsers, start_at):
+    """ Reset all restricted parsers to the right of 'start_at'. """
+    length = len(parsers)
+    for i in range(start_at + 1, length):
+        _reset(parsers[i])
+
+
+def _overrestricted(parser):
+    """ Return True if a parser is maximally restricted. """
+    try:
+        return parser.overrestricted()
+    except AttributeError:
+        return True
+
+
+def _restrict(parser):
+    """
+    Return a restricted version of a parser.
+    A no-op when used on a parser that performs no lookahead.
+    """
+    if get_lookahead(parser) is None:
+        return parser
+    return _RestrictedParser(parser)
+
+
+def _restrict_more(parser):
+    """
+    Further restrict a parser. A no-op when used on a parser that performs no
+    lookahead.
+    """
+    try:
+        parser.restrict_more()
+    except AttributeError:
+        pass
+
+
+def _reset(parser):
+    """ Reset restrictions on a parser. """
+    try:
+        parser.reset()
+    except AttributeError:
+        pass
+
+
+def _shift(parsers, from_pos):
+    """
+    Propagate restrictions' change from 'from_pos' to the left end of a parser
+    chain.
+
+    Return the index of the last parser affected.
+    """
+    while from_pos >= 0:
+        p = parsers[from_pos]
+        _restrict_more(p)
+        if _overrestricted(p):
+            from_pos -= 1
+            continue
+        return from_pos
+    return 0
+
+
+def _subparse(state, parser, at):
+    """ Parse using only a portion of the input (namely, up to 'at'). """
+    use, do_not = state.split(at)
+    after = parser(use)
+    after.left += do_not.left
+    return after
+
+
+class _CachedAppender():
+    """
+    A class that tries to combine efficient appending of deques and fast
+    indexing of lists.
+    """
+
+    def __init__(self):
+        self.changed = False
+        self.deque = deque()
+        self.list = []
+        self.empty = True
+
+    def __getitem__(self, index):
+        if self.empty:
+            raise IndexError("Indexing into an empty appender")
+        if self.changed:
+            self.update()
+        return self.list[index]
+
+    def __iter__(self):
+        return iter(self.deque)
+
+    def __setitem__(self, key, value):
+        self.deque[key] = value
+        self.list[key] = value
+
+    def __len__(self):
+        if self.changed:
+            self.update()
+        return len(self.list)
+
+    def append(self, item):
+        """ Add an element to the right side of the underlying deque. """
+        self.deque.append(item)
+        self.changed = True
+        self.empty = False
+
+    def update(self):
+        """ Syncronize the underlying list with the deque. """
+        self.list = list(self.deque)
+        self.changed = False
+
+
+class _RestrictedParser():
+    """ A parser that only operates on a restricted portion of input. """
+
+    def __init__(self, parser):
+        self.parser = parser
+        self.lookahead = get_lookahead(parser)
+        self.delta = 0
+        self.last_state = None
+
+    def __call__(self, state):
+        if self.lookahead is None:
+            res = self.parser(state)
+            self.last_state = res
+            return res
+        if self.lookahead is Lookahead.GREEDY:
+            res = _subparse(state, self.parser, len(state.left) - self.delta)
+            self.last_state = res
+            return res
+        # is reluctant
+        res = _subparse(state, self.parser, self.delta)
+        self.last_state = res
+        return res
+
+    def overrestricted(self):
+        """
+        Return True if restrictions have reached their maximum - that is, if
+        either allowed input portion is shrinked into an empty string, or has
+        extended beyond the bounds of leftover input.
+        """
+        return self.delta > len(self.last_state.left)
+
+    def reset(self):
+        """ Reset restrictions. """
+        self.delta = 0
+        self.last_state = None
+
+    def restrict_more(self):
+        """ Increase restriction level on the input. """
+        self.delta += 1
