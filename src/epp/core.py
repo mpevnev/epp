@@ -371,10 +371,11 @@ def _chain_reset(parsers, start_at):
 
 def _overrestricted(parser):
     """ Return True if a parser is maximally restricted. """
-    try:
-        return parser.overrestricted()
-    except AttributeError:
+    # isinstance may not be idiomatic, but it's safer than relying on parsers
+    # not having a particular method.
+    if not isinstance(parser, RestrictedParser):
         return True
+    return parser.overrestricted()
 
 
 def _restrict(parser):
@@ -392,18 +393,16 @@ def _restrict_more(parser):
     Further restrict a parser. A no-op when used on a parser that performs no
     lookahead.
     """
-    try:
-        parser.restrict_more()
-    except AttributeError:
-        pass
+    if not isinstance(parser, RestrictedParser):
+        return
+    parser.restrict_more()
 
 
 def _reset(parser):
     """ Reset restrictions on a parser. """
-    try:
-        parser.reset()
-    except AttributeError:
-        pass
+    if not isinstance(parser, RestrictedParser):
+        return
+    parser.reset()
 
 
 def _shift(parsers, from_pos):
