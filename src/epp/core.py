@@ -210,14 +210,41 @@ def chain(funcs, combine=True, stop_on_failure=False):
     def res(state):
         """ A chain of parsers. """
         pieces = deque() if combine else None
-        def ifcombine(state):
+        def maybe_combine(state):
             """ Concatenate 'parsed's if 'combine' is truthy. """
             if combine:
                 state.parsed = "".join(pieces)
             return state
+        lookahead_chain = None
         for parser in funcs:
-            pass
-        return ifcombine(state)
+            if lookahead_chain is None and has_lookahead(parser):
+                lookahead_chain = _CachedAppender()
+            if lookahead_chain is not None or has_lookahead(parser):
+                parser = _restrict(parser)
+                lookahead_chain.append(parser)
+            try:
+                state = parser(state)
+                if combine:
+                    pieces.append(state.parsed)
+            except ParsingEnd as end:
+                raise end
+            except ParsingFailure as failure:
+                if stop_on_failure:
+                    return maybe_combine(state)
+                if lookahead_chain is None:
+                    raise failure
+                pos = len(lookahead_chain) - 1
+                while True:
+                    try_shift = _shift(lookahead_chain, pos)
+                    if try_shift is None:
+                        raise failure
+                    _reset_chain(lookahead_chain, try_shift)
+                    state, failed = _try_chain(lookahead_chain, try_shift)
+                    if state is None:
+                        pos = failed
+                        continue
+                    break
+        return maybe_combine(state)
     return res
 
 
@@ -362,7 +389,7 @@ def reluctant(parser):
 #--------- private helper things ---------#
 
 
-def _chain_reset(parsers, start_at):
+def _reset_chain(parsers, start_at):
     """ Reset all restricted parsers to the right of 'start_at'. """
     length = len(parsers)
     for i in range(start_at + 1, length):
@@ -410,7 +437,8 @@ def _shift(parsers, from_pos):
     Propagate restrictions' change from 'from_pos' to the left end of a parser
     chain.
 
-    Return the index of the last parser affected.
+    Return the index of the last parser affected or None if all restriction
+    combinations were tried.
     """
     while from_pos >= 0:
         p = parsers[from_pos]
@@ -419,7 +447,26 @@ def _shift(parsers, from_pos):
             from_pos -= 1
             continue
         return from_pos
-    return 0
+    return None
+
+
+def _try_chain(parsers, from_pos):
+    """
+    Try to parse the state the first parser in the chain remembers.
+
+    Return a tuple (state, index of the first parser to fail).
+    In case of failure, 'state' will be None.
+    """
+    state = parsers[from_pos].state_before
+    i = from_pos
+    for i in range(from_pos, len(parsers)):
+        try:
+            state = parsers[i](state)
+        except ParsingFailure:
+            return (None, i)
+        except ParsingEnd as end:
+            raise end
+    return state, i
 
 
 def _subparse(state, parser, at):
@@ -480,20 +527,18 @@ class _RestrictedParser():
         self.parser = parser
         self.lookahead = get_lookahead(parser)
         self.delta = 0
-        self.last_state = None
+        self.state_before = None
 
     def __call__(self, state):
+        self.state_before = state
         if self.lookahead is None:
             res = self.parser(state)
-            self.last_state = res
             return res
         if self.lookahead is Lookahead.GREEDY:
             res = _subparse(state, self.parser, len(state.left) - self.delta)
-            self.last_state = res
             return res
         # is reluctant
         res = _subparse(state, self.parser, self.delta)
-        self.last_state = res
         return res
 
     def overrestricted(self):
@@ -502,12 +547,12 @@ class _RestrictedParser():
         either allowed input portion is shrinked into an empty string, or has
         extended beyond the bounds of leftover input.
         """
-        return self.delta > len(self.last_state.left)
+        return self.delta > len(self.state_before.left)
 
     def reset(self):
         """ Reset restrictions. """
         self.delta = 0
-        self.last_state = None
+        self.state_before = None
 
     def restrict_more(self):
         """ Increase restriction level on the input. """
