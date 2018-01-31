@@ -209,7 +209,7 @@ def chain(funcs, combine=True, stop_on_failure=False):
     """
     def res(state):
         """ A chain of parsers. """
-        pieces = deque() if combine else None
+        pieces = _CachedAppender() if combine else None
         def maybe_combine(state):
             """ Concatenate 'parsed's if 'combine' is truthy. """
             if combine:
@@ -237,9 +237,11 @@ def chain(funcs, combine=True, stop_on_failure=False):
                 while True:
                     try_shift = _shift(lookahead_chain, pos)
                     if try_shift is None:
-                        raise failure
+                        raise ParsingFailure(
+                            "Failed to find a combination of inputs that allows "
+                            " successful parsing")
                     _reset_chain(lookahead_chain, try_shift)
-                    state, failed = _try_chain(lookahead_chain, try_shift)
+                    state, failed = _try_chain(lookahead_chain, try_shift, pieces)
                     if state is None:
                         pos = failed
                         continue
@@ -450,22 +452,32 @@ def _shift(parsers, from_pos):
     return None
 
 
-def _try_chain(parsers, from_pos):
+def _try_chain(parsers, from_pos, pieces):
     """
     Try to parse the state the first parser in the chain remembers.
 
     Return a tuple (state, index of the first parser to fail).
     In case of failure, 'state' will be None.
+
+    Also, if 'pieces' is not None, append every parsed chunk to it, having
+    first dropped every invalidated piece. If an attempt to parse fails,
+    'pieces' will not be affected.
     """
     state = parsers[from_pos].state_before
     i = from_pos
+    new_pieces = None if pieces is None else deque()
     for i in range(from_pos, len(parsers)):
         try:
             state = parsers[i](state)
+            if pieces is not None:
+                new_pieces.append(state.parsed)
         except ParsingFailure:
             return (None, i)
         except ParsingEnd as end:
             raise end
+    if pieces is not None:
+        pieces.drop(len(parsers) - from_pos)
+        pieces.extend(new_pieces)
     return state, i
 
 
@@ -513,6 +525,43 @@ class _CachedAppender():
         self.deque.append(item)
         self.changed = True
         self.empty = False
+
+    def drop(self, num):
+        """
+        Remove 'num' elements from the right end of the appender.
+        Raise ValueError if the appender has fewer that 'num' elements.
+        """
+        self.update()
+        if num < 0:
+            raise ValueError(
+                f"Attempted to remove a negative number ({num}) of elements from an appender")
+        if len(self.list) > num:
+            raise ValueError(f"The appender has fewer than {num} elements")
+        for _ in range(num):
+            self.deque.pop()
+        self.list = self.list[:-num]
+
+    def dropleft(self, num):
+        """
+        Remove 'num' elements from the left end of the appender.
+        Raise ValueError if the appender has fewer than 'num' elements.
+        """
+        self.update()
+        if num < 0:
+            raise ValueError(
+                f"Attempted to remove a negative number ({num}) of elements from an appender")
+        if len(self.list) > num:
+            raise ValueError(f"The appender has fewer than {num} elements")
+        for _ in range(num):
+            self.deque.popleft()
+        self.list = self.list[num:]
+
+    def extend(self, iterable):
+        """
+        Append every item in 'iterable' to the appender.
+        """
+        for item in iterable:
+            self.append(item)
 
     def update(self):
         """ Syncronize the underlying list with the deque. """
