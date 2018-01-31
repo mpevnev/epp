@@ -476,7 +476,10 @@ def _try_chain(parsers, from_pos, pieces):
         except ParsingEnd as end:
             raise end
     if pieces is not None:
-        pieces.drop(len(parsers) - from_pos)
+        # '-1' is here because the last parser does not contribute a piece, as
+        # it has failed and the chain is looking for a combination of inputs
+        # to satisfy it
+        pieces.drop(len(parsers) - from_pos - 1)
         pieces.extend(new_pieces)
     return state, i
 
@@ -517,7 +520,7 @@ class _CachedAppender():
 
     def __len__(self):
         if self.changed:
-            self.update()
+            return len(self.deque)
         return len(self.list)
 
     def append(self, item):
@@ -529,32 +532,22 @@ class _CachedAppender():
     def drop(self, num):
         """
         Remove 'num' elements from the right end of the appender.
-        Raise ValueError if the appender has fewer that 'num' elements.
+        Raise IndexError if 'num' is negative.
+        Raise IndexError if 'num' is greater than the size of the appender.
         """
-        self.update()
         if num < 0:
-            raise ValueError(
+            raise IndexError(
                 f"Attempted to remove a negative number ({num}) of elements from an appender")
-        if len(self.list) > num:
-            raise ValueError(f"The appender has fewer than {num} elements")
         for _ in range(num):
-            self.deque.pop()
-        self.list = self.list[:-num]
-
-    def dropleft(self, num):
-        """
-        Remove 'num' elements from the left end of the appender.
-        Raise ValueError if the appender has fewer than 'num' elements.
-        """
-        self.update()
-        if num < 0:
-            raise ValueError(
-                f"Attempted to remove a negative number ({num}) of elements from an appender")
-        if len(self.list) > num:
-            raise ValueError(f"The appender has fewer than {num} elements")
-        for _ in range(num):
-            self.deque.popleft()
-        self.list = self.list[num:]
+            try:
+                self.deque.pop()
+            except IndexError:
+                raise IndexError("Attempted to drop more elements than an appender has")
+        try:
+            _ = self.deque[0]
+        except IndexError:
+            self.empty = True
+        self.changed = True
 
     def extend(self, iterable):
         """
@@ -562,6 +555,8 @@ class _CachedAppender():
         """
         for item in iterable:
             self.append(item)
+            self.empty = False
+            self.changed = True
 
     def update(self):
         """ Syncronize the underlying list with the deque. """
