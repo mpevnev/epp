@@ -219,7 +219,6 @@ class TestCore(unittest.TestCase):
         self.assertEqual(state_after.parsed, string)
         self.assertEqual(state_after.left, "")
 
-
     def test_modify(self):
         """ Test 'modify' parser generator. """
         string = "doesn't change"
@@ -925,6 +924,69 @@ class TestParsers(unittest.TestCase):
         self.assertIsNone(state_after.value)
         self.assertEqual(state_after.left, string)
         self.assertEqual(state_after.parsed, "")
+
+
+class TestLookahead(unittest.TestCase):
+    """ Test lookahead mechanism. """
+
+    def test_greedy_negative_1(self):
+        """ Test 'greedy' lookahead mode, negative check #1. """
+        string = "2"
+        state = core.State(string)
+        parser = core.chain([core.greedy(par.literal("1"))])
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+        self.assertIsNone(state.value)
+        self.assertEqual(state.parsed, "")
+        self.assertEqual(state.left, string)
+
+    def test_greedy_positive_1(self):
+        """ Test 'greedy' lookahead mode, positive check #1. """
+        string = "foo!"
+        state = core.State(string)
+        parser = core.chain([core.greedy(par.everything()), par.literal("!")])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_greedy_positive_2(self):
+        """ Test 'greedy' lookahead mode, positive check #2. """
+        string = "fofofo"
+        state = core.State(string)
+        parser = core.chain(
+            [core.greedy(par.many(par.literal("fo"))),
+             par.literal("fo")])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_reluctant_positive_1(self):
+        """ Test 'reluctant' lookahead mode, positive check #1. """
+        string = "foo"
+        state = core.State(string)
+        parser = core.chain([core.reluctant(par.everything())])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "")
+        self.assertEqual(state_after.left, string)
+
+    def test_reluctant_positive_2(self):
+        """ Test 'reluctant' lookahead mode, positive check #2. """
+        string = "fofofo"
+        state = core.State(string)
+        parser = core.chain(
+            [core.reluctant(par.many(par.literal("fo"), min_hits=1)),
+             par.literal("fo")])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "fofo")
+        self.assertEqual(state_after.left, "fo")
 
 
 if __name__ == "__main__":
