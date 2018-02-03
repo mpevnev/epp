@@ -11,8 +11,6 @@ from collections import deque
 import itertools as itools
 
 import epp.core as core
-# reimport everything from 'core' to avoid having to import both 'core' and 'parsers'
-from epp.core import *
 
 
 #--------- single-character parsers ---------#
