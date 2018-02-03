@@ -42,9 +42,6 @@ class TestCore(unittest.TestCase):
             par.literal("3")])
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, "4")
-        self.assertEqual(state.parsed, "")
 
     def test_branch_positive_1(self):
         """ Test 'branch' parser generator, positive check #1. """
@@ -125,9 +122,6 @@ class TestCore(unittest.TestCase):
             par.literal("3")])
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, "123")
 
     def test_chain_negative_2(self):
         """ Test 'chain' parser generator, negative check #2. """
@@ -139,9 +133,6 @@ class TestCore(unittest.TestCase):
             par.literal("3")])
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, "1x3")
 
     def test_chain_positive_1(self):
         """ Test 'chain' parser generator, positive check #1. """
@@ -269,9 +260,6 @@ class TestCore(unittest.TestCase):
             core.test(test)])
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, "6")
 
     def test_test_positive_1(self):
         """ Test 'test' parser generator, positive check #1. """
@@ -303,9 +291,6 @@ class TestParsers(unittest.TestCase):
         parser = par.alnum()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, "")
-        self.assertEqual(state.parsed, "")
 
     def test_alnum_negative_2(self):
         """ Test 'alnum' parser generator, negative check #2. """
@@ -314,9 +299,6 @@ class TestParsers(unittest.TestCase):
         parser = par.alnum(False)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_alnum_negative_3(self):
         """ Test 'alnum' parser generator, negative check #3. """
@@ -325,9 +307,6 @@ class TestParsers(unittest.TestCase):
         parser = par.alnum(True)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_alnum_positive_1(self):
         """ Test 'alnum' parser generator, positive check #1. """
@@ -357,9 +336,6 @@ class TestParsers(unittest.TestCase):
         parser = par.alpha()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, "")
 
     def test_alpha_negative_2(self):
         """ Test 'alpha' parser generator, negative check #2. """
@@ -368,9 +344,6 @@ class TestParsers(unittest.TestCase):
         parser = par.alpha()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_alpha_negative_3(self):
         """ Test 'alpha' parser generator, negative check #3. """
@@ -379,9 +352,6 @@ class TestParsers(unittest.TestCase):
         parser = par.alpha(True)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_alpha_positive_1(self):
         """ Test 'alpha' parser generator, positive check #1. """
@@ -412,9 +382,6 @@ class TestParsers(unittest.TestCase):
         parser = par.any_char()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_any_char_positive_1(self):
         """ Test 'any_char' parser generator, positive check #1. """
@@ -434,9 +401,6 @@ class TestParsers(unittest.TestCase):
         parser = par.digit()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, "")
 
     def test_digit_negative_2(self):
         """ Test 'digit' parser generator, negative check #2. """
@@ -445,9 +409,6 @@ class TestParsers(unittest.TestCase):
         parser = par.digit()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_digit_positive_1(self):
         """ Test 'digit' parser generator, positive check #1. """
@@ -467,9 +428,6 @@ class TestParsers(unittest.TestCase):
         parser = par.newline()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, "")
 
     def test_newline_negative_2(self):
         """ Test 'newline' parser generator, negative check #2. """
@@ -478,9 +436,6 @@ class TestParsers(unittest.TestCase):
         parser = par.newline()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_newline_positive_1(self):
         """ Test 'newline' parser generator, positive check #1. """
@@ -500,9 +455,6 @@ class TestParsers(unittest.TestCase):
         parser = par.nonwhite_char()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_nonwhite_char_negative_2(self):
         """ Test 'nonwhite_char' parser generator, negative check #2. """
@@ -511,9 +463,6 @@ class TestParsers(unittest.TestCase):
         parser = par.nonwhite_char()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_nonwhite_char_positive_1(self):
         """ Test 'nonwhite_char' parser generator, positive check #1. """
@@ -533,9 +482,6 @@ class TestParsers(unittest.TestCase):
         parser = par.white_char()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_white_char_negative_2(self):
         """ Test 'white_char' parser generator, negative check #2. """
@@ -544,9 +490,6 @@ class TestParsers(unittest.TestCase):
         parser = par.white_char(False)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_white_char_negative_3(self):
         """ Test 'white_char' parser generator, negative check #3. """
@@ -555,9 +498,6 @@ class TestParsers(unittest.TestCase):
         parser = par.white_char()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_white_char_positive_1(self):
         """ Test 'white_char' parser generator, positive check #1. """
@@ -590,9 +530,6 @@ class TestParsers(unittest.TestCase):
         parser = par.integer()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_integer_negative_2(self):
         """ Test 'integer' parser generator, negative check #2. """
@@ -601,9 +538,6 @@ class TestParsers(unittest.TestCase):
         parser = par.integer()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_integer_positive_1(self):
         """ Test 'integer' parser generator, positive check #1. """
@@ -634,9 +568,6 @@ class TestParsers(unittest.TestCase):
         parser = par.line()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, string)
 
     def test_line_positive_1(self):
         """ Test 'line' parser generator, positive check #1. """
@@ -667,9 +598,6 @@ class TestParsers(unittest.TestCase):
         parser = par.whitespace()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, string)
 
     def test_whitespace_negative_2(self):
         """ Test 'whitespace' parser generator, negative check #2. """
@@ -678,9 +606,6 @@ class TestParsers(unittest.TestCase):
         parser = par.whitespace(1, False)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, string)
 
     def test_whitespace_negative_3(self):
         """ Test 'whitespace' parser generator, negative check #3. """
@@ -689,9 +614,6 @@ class TestParsers(unittest.TestCase):
         parser = par.whitespace()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, string)
 
     def test_whitespace_positive_1(self):
         """ Test 'whitespace' parser generator, positive check #1. """
@@ -735,9 +657,6 @@ class TestParsers(unittest.TestCase):
         parser = par.end_of_input()
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, string)
 
     def test_end_of_input_positive_1(self):
         """ Test 'end_of_input' parser generator, positive check #1. """
@@ -768,9 +687,6 @@ class TestParsers(unittest.TestCase):
         parser = par.literal("baz")
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_literal_positive_1(self):
         """ Test 'literal' parser generator, positive check #1. """
@@ -790,9 +706,6 @@ class TestParsers(unittest.TestCase):
         parser = par.maybe(par.literal("baz"))
         state_after = core.parse(state, parser)
         self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.left, string)
-        self.assertEqual(state_after.parsed, "")
 
     def test_maybe_positive_1(self):
         """ Test 'maybe' parser generator, positive check #1. """
@@ -817,9 +730,6 @@ class TestParsers(unittest.TestCase):
         parser = par.many(par.literal("foo"), 3, 3)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_many_positive_1(self):
         """ Test 'many' parser generator, positive check #1. """
@@ -850,9 +760,6 @@ class TestParsers(unittest.TestCase):
         parser = par.multi(["a", "b"])
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_multi_positive_1(self):
         """ Test 'multi' parser generator, positive check #1. """
@@ -877,9 +784,6 @@ class TestParsers(unittest.TestCase):
         parser = par.repeat_while(lambda state, window: window == "a", 1, 3)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_repeat_while_negative_3(self):
         """ Test 'repeat_while' parser generator, negative check #3. """
@@ -888,9 +792,6 @@ class TestParsers(unittest.TestCase):
         parser = par.repeat_while(lambda state, window: window == "a", 1, 3)
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.left, string)
-        self.assertEqual(state.parsed, "")
 
     def test_repeat_while_positive_1(self):
         """ Test 'repeat_while' parser generator, positive check #1. """
@@ -936,9 +837,6 @@ class TestLookahead(unittest.TestCase):
         parser = core.chain([core.greedy(par.literal("1"))])
         state_after = core.parse(state, parser)
         self.assertIsNone(state_after)
-        self.assertIsNone(state.value)
-        self.assertEqual(state.parsed, "")
-        self.assertEqual(state.left, string)
 
     def test_greedy_positive_1(self):
         """ Test 'greedy' lookahead mode, positive check #1. """
@@ -964,6 +862,14 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(state_after.parsed, string)
         self.assertEqual(state_after.left, "")
 
+    def test_reluctant_negative_1(self):
+        """ Test 'reluctant' lookahead mode, negative check #1. """
+        string = "2"
+        state = core.State(string)
+        parser = core.chain([core.reluctant(par.literal("1"))])
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+
     def test_reluctant_positive_1(self):
         """ Test 'reluctant' lookahead mode, positive check #1. """
         string = "foo"
@@ -977,6 +883,17 @@ class TestLookahead(unittest.TestCase):
 
     def test_reluctant_positive_2(self):
         """ Test 'reluctant' lookahead mode, positive check #2. """
+        string = "foo!bar"
+        state = core.State(string)
+        parser = core.chain([core.reluctant(par.everything()), par.literal("!")])
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "foo!")
+        self.assertEqual(state_after.left, "bar")
+
+    def test_reluctant_positive_3(self):
+        """ Test 'reluctant' lookahead mode, positive check #3. """
         string = "fofofo"
         state = core.State(string)
         parser = core.chain(
