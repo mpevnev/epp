@@ -395,6 +395,33 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, "dsf")
         self.assertEqual(state_after.parsed, "a")
 
+    def test_cond_char_negative_1(self):
+        """ Test 'cond_char' parser generator, negative check #1. """
+        string = ""
+        state = epp.State(string)
+        parser = epp.cond_char(lambda char: True)
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_cond_char_negative_2(self):
+        """ Test 'cond_char' parser generator, negative check #2. """
+        string = "a"
+        state = epp.State(string)
+        parser = epp.cond_char(lambda char: char > "b")
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_cond_char_positive_1(self):
+        """ Test 'cond_char' parser generator, positive check #1. """
+        string = "ab"
+        state = epp.State(string)
+        parser = epp.cond_char(lambda char: char == "a")
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "a")
+        self.assertEqual(state_after.left, "b")
+
     def test_digit_negative_1(self):
         """ Test 'digit' parser generator, negative check #1. """
         string = ""

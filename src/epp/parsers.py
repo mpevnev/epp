@@ -7,7 +7,6 @@ ones in the 'core' module.
 
 """
 
-from collections import deque
 import itertools as itools
 
 import epp.core as core
@@ -71,6 +70,27 @@ def any_char():
         except IndexError:
             raise core.ParsingFailure("Expected a character, got the end of input")
         return state.consume(1)
+    return res
+
+
+def cond_char(condition):
+    """
+    Return a parser that will match a character such that 'condition(char)' is
+    truthy.
+
+    Raise ValueError if 'condition' is not callable.
+    """
+    if not callable(condition):
+        raise ValueError(f"{condition} is not callable")
+    def res(state):
+        """ Match a character that passes a conditional check. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a character, got the end of input")
+        if condition(char):
+            return state.consume(1)
+        raise core.ParsingFailure(f"{char} did not pass the {condition} test")
     return res
 
 
