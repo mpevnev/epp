@@ -20,6 +20,7 @@ from collections import deque
 from copy import deepcopy
 import enum
 
+
 #--------- base things ---------#
 
 
@@ -35,6 +36,9 @@ class State():
         return (self.value == other.value and
                 self.left == other.left and
                 self.parsed == other.parsed)
+
+    def __repr__(self):
+        return f"State({repr(self.value)}, {repr(self.left[0:40])}, {repr(self.parsed)})"
 
     def copy(self):
         """ Shallow copy the State object. """
@@ -205,7 +209,15 @@ def chain(funcs, combine=True, stop_on_failure=False):
     otherwise use the last one.
 
     If 'stop_on_failure' is truthy, stop parsing instead of failing it when a
-    parser in the chain raises a ParsingFailure exception.
+    parser in the chain raises a ParsingFailure exception. Note that this also
+    includes parsers with lookahead, effectively disabling it.
+
+    A note on using iterators in chains: if supplied 'funcs' is an iterator,
+    there is a possibility of 'funcs' being exausted on the first attempt to
+    parse, with subsequent attempts silently succeeding because that's the
+    default behaviour for empty 'funcs'. If you want to run your chain several
+    times - be it because of lookahead or for different reasons - make sure to
+    wrap the iterator in list or some other *reusable* iterable.
     """
     def res(state):
         """ A chain of parsers. """
@@ -238,8 +250,8 @@ def chain(funcs, combine=True, stop_on_failure=False):
                     try_shift = _shift(lookahead_chain, pos)
                     if try_shift is None:
                         raise ParsingFailure(
-                            "Failed to find a combination of inputs that allows "
-                            " successful parsing")
+                            "Failed to find a combination of inputs that allows  "
+                            "successful parsing")
                     _reset_chain(lookahead_chain, try_shift)
                     state, failed = _try_chain(lookahead_chain, try_shift, pieces)
                     if state is None:
@@ -338,9 +350,16 @@ def get_lookahead(parser):
         return None
 
 
-def no_lookahead(parser):
-    """ Return True if the parser performs no lookahead. """
-    return not hasattr(parser, "lookahead")
+def greedy(parser):
+    """ Return a greedy version of 'parser'. """
+    try:
+        if parser.lookahead is Lookahead.GREEDY:
+            return parser
+    except AttributeError:
+        pass
+    res = lambda state: parser(state)
+    res.lookahead = Lookahead.GREEDY
+    return res
 
 
 def has_lookahead(parser):
@@ -364,16 +383,9 @@ def is_reluctant(parser):
         return False
 
 
-def greedy(parser):
-    """ Return a greedy version of 'parser'. """
-    try:
-        if parser.lookahead is Lookahead.GREEDY:
-            return parser
-    except AttributeError:
-        pass
-    res = lambda state: parser(state)
-    res.lookahead = Lookahead.GREEDY
-    return res
+def no_lookahead(parser):
+    """ Return True if the parser performs no lookahead. """
+    return not hasattr(parser, "lookahead")
 
 
 def reluctant(parser):
@@ -383,19 +395,16 @@ def reluctant(parser):
             return parser
     except AttributeError:
         pass
-    res = lambda state: parser(state)
+    def res(state):
+        retval = parser(state)
+        return retval
+        return parser(state)
+    #res = lambda state: parser(state)
     res.lookahead = Lookahead.RELUCTANT
     return res
 
 
 #--------- private helper things ---------#
-
-
-def _reset_chain(parsers, start_at):
-    """ Reset all restricted parsers to the right of 'start_at'. """
-    length = len(parsers)
-    for i in range(start_at + 1, length):
-        _reset(parsers[i])
 
 
 def _overrestricted(parser):
@@ -405,6 +414,13 @@ def _overrestricted(parser):
     if not isinstance(parser, _RestrictedParser):
         return True
     return parser.overrestricted()
+
+
+def _reset_chain(parsers, start_at):
+    """ Reset all restricted parsers to the right of 'start_at'. """
+    length = len(parsers)
+    for i in range(start_at + 1, length):
+        _reset(parsers[i])
 
 
 def _restrict(parser):
@@ -452,6 +468,14 @@ def _shift(parsers, from_pos):
     return None
 
 
+def _subparse(state, parser, at):
+    """ Parse using only a portion of the input (namely, up to 'at'). """
+    use, do_not = state.split(at)
+    after = parser(use)
+    after.left += do_not.left
+    return after
+
+
 def _try_chain(parsers, from_pos, pieces):
     """
     Try to parse the state the first parser in the chain remembers.
@@ -477,19 +501,10 @@ def _try_chain(parsers, from_pos, pieces):
             raise end
     if pieces is not None:
         # '-1' is here because the last parser does not contribute a piece, as
-        # it has failed and the chain is looking for a combination of inputs
-        # to satisfy it
+        # it has failed
         pieces.drop(len(parsers) - from_pos - 1)
         pieces.extend(new_pieces)
     return state, i
-
-
-def _subparse(state, parser, at):
-    """ Parse using only a portion of the input (namely, up to 'at'). """
-    use, do_not = state.split(at)
-    after = parser(use)
-    after.left += do_not.left
-    return after
 
 
 class _CachedAppender():
@@ -576,14 +591,11 @@ class _RestrictedParser():
     def __call__(self, state):
         self.state_before = state
         if self.lookahead is None:
-            res = self.parser(state)
-            return res
+            return self.parser(state)
         if self.lookahead is Lookahead.GREEDY:
-            res = _subparse(state, self.parser, len(state.left) - self.delta)
-            return res
+            return _subparse(state, self.parser, len(state.left) - self.delta)
         # is reluctant
-        res = _subparse(state, self.parser, self.delta)
-        return res
+        return _subparse(state, self.parser, self.delta)
 
     def overrestricted(self):
         """
