@@ -217,7 +217,8 @@ def chain(funcs, combine=True, stop_on_failure=False):
     parse, with subsequent attempts silently succeeding because that's the
     default behaviour for empty 'funcs'. If you want to run your chain several
     times - be it because of lookahead or for different reasons - make sure to
-    wrap the iterator in list or some other *reusable* iterable.
+    wrap the iterator in list or some other *reusable* iterable (or call
+    'reuse_iter' on it, if it comes from a function).
     """
     def res(state):
         """ A chain of parsers. """
@@ -395,13 +396,21 @@ def reluctant(parser):
             return parser
     except AttributeError:
         pass
-    def res(state):
-        retval = parser(state)
-        return retval
-        return parser(state)
-    #res = lambda state: parser(state)
+    res = lambda state: parser(state)
     res.lookahead = Lookahead.RELUCTANT
     return res
+
+
+def reuse_iter(generator, *args, **kwargs):
+    """
+    Make an iterable that will call 'generator(*args, **kwargs)' when iterated
+    over and use the return value as an iterator.
+    """
+    class Res():
+        """ A reusable iterator container. """
+        def __iter__(self):
+            return generator(*args, **kwargs)
+    return Res()
 
 
 #--------- private helper things ---------#
