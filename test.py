@@ -862,6 +862,45 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(state_after.parsed, string)
         self.assertEqual(state_after.left, "")
 
+    def test_interplay_negative_1(self):
+        """ Test 'greedy' and 'reluctant' interplay, negative check 1. """
+        string = "aabbd"
+        state = core.State(string)
+        parser = core.chain(
+            [par.greedy(par.many(par.literal("a"))),
+             par.reluctant(par.many(par.literal("b"))),
+             par.literal("c")])
+        state_after = core.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_interplay_positive_1(self):
+        """ Test 'greedy' and 'reluctant' interplay, positive check #1. """
+        string = "aabbd"
+        state = core.State(string)
+        parser = core.chain(
+            [par.greedy(par.many(par.literal("a"))),
+             par.reluctant(par.many(par.literal("b"), min_hits=1)),
+             par.everything()], False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "bd")
+        self.assertEqual(state_after.left, "")
+
+    def test_interplay_positive_2(self):
+        """ Test 'greedy' and 'reluctant' interplay, positive check #2. """
+        string = "aabbd"
+        state = core.State(string)
+        parser = core.chain(
+            [par.reluctant(par.many(par.literal("a"))),
+             par.greedy(par.many(par.literal("b"), min_hits=1)),
+             par.everything()], False)
+        state_after = core.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "d")
+        self.assertEqual(state_after.left, "")
+
     def test_reluctant_negative_1(self):
         """ Test 'reluctant' lookahead mode, negative check #1. """
         string = "2"
