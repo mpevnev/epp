@@ -375,6 +375,28 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     return res
 
 
+def weave(parsers, separator, trailing=None):
+    """
+    Return a chain where each parser in 'parsers' is separated by 'separator'
+    from others.
+    If 'trailing' is not None, append it to the resulting chain.
+
+    The same note about using iterators as on 'chain' applies here as well.
+    Wrap them in a list or 'reuse_iter' if the chain is going to be tried
+    several times.
+    """
+    def iterator():
+        """ Return the iterable that will go into the chain. """
+        it = iter(parsers)
+        for i, p in enumerate(it):
+            if i != 0:
+                yield separator
+            yield p
+        if trailing is not None:
+            yield trailing
+    return core.chain(core.reuse_iter(iterator))
+
+
 #--------- helper things ---------#
 
 _LINE_SEPARATORS = [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]

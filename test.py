@@ -4,6 +4,7 @@
 Unit tests for epp library.
 """
 
+import itertools as it
 import unittest
 
 import epp
@@ -853,6 +854,59 @@ class TestParsers(unittest.TestCase):
         self.assertIsNone(state_after.value)
         self.assertEqual(state_after.left, string)
         self.assertEqual(state_after.parsed, "")
+
+    def test_weave_negative_1(self):
+        """ Test 'weave' parser generator, negative check #1. """
+        string = "12131"
+        state = epp.State(string)
+        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+                           epp.literal("2"))
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_weave_negative_2(self):
+        """ Test 'weave' parser generator, negative check #2. """
+        string = "22121"
+        state = epp.State(string)
+        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+                           epp.literal("2"))
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_weave_negative_3(self):
+        """ Test 'weave' parser generator, negative check #3. """
+        string = "121215"
+        state = epp.State(string)
+        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+                           epp.literal("2"),
+                           trailing=epp.literal("3"))
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_weave_positive_1(self):
+        """ Test 'weave' parser generator, positive check #1. """
+        string = "12121"
+        state = epp.State(string)
+        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+                epp.literal("2"))
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_weave_positive_2(self):
+        """ Test 'weave' parser generator, positive check #2. """
+        string = "121213"
+        state = epp.State(string)
+        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+                epp.literal("2"),
+                trailing=epp.literal("3"))
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
 
 
 class TestLookahead(unittest.TestCase):
