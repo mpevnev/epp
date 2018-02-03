@@ -248,7 +248,9 @@ class TestCore(unittest.TestCase):
         self.assertIsNotNone(state_after)
         self.assertIsNone(state_after.value)
         self.assertEqual(state_after.left, "3")
-        self.assertEqual(state_after.parsed, "12")
+        # note that 'combine' step of a chain is only performed if the chain
+        # was not interrupted
+        self.assertEqual(state_after.parsed, "2")
 
     def test_test_negative_1(self):
         """  Test 'test' parser generator, negative check #1. """

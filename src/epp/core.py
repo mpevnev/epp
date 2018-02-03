@@ -314,6 +314,10 @@ def stop(discard=False):
 
     Note that the thrown ParsingEnd exception will have the copy of the last
     successful parser's State, unless 'discard' is truthy.
+
+    Also note that using this inside a chain with 'combine=True' will not
+    result in previous parsers' chunks concatenated. Their effect on 'left' and
+    'value' will persist, though.
     """
     def res(state):
         """ Stop parsing. """
