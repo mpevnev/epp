@@ -280,11 +280,11 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
     if max_hits > 0 and max_hits < min_hits:
         raise ValueError("'max_hits' is less than 'min_hits'")
     if min_hits > 0:
-        must = core.chain((parser for i in range(min_hits)), combine)
+        must = core.chain(list(itools.repeat(parser, min_hits)), combine)
     else:
         must = None
     if max_hits > 0:
-        might = core.chain((parser for i in range(max_hits - min_hits)), combine, True)
+        might = core.chain(list(itools.repeat(parser, max_hits - min_hits)), combine, True)
     else:
         might = core.chain(itools.repeat(parser), combine, True)
     if must is None:
