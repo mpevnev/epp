@@ -292,6 +292,9 @@ def modify(transformer):
     """
     Return a parser that, when run, modifies chain state.
 
+    'transformer' should be a callable that takes a State object and returns a
+    new State object.
+
     Note that 'parsed' of the resulting State object will be overwritten with
     an empty string.
     """
