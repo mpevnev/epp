@@ -450,6 +450,33 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.parsed, "1")
         self.assertEqual(state_after.left, "a")
 
+    def test_hex_digit_negative_1(self):
+        """ Test 'hex_digit' parser generator, negative check #1. """
+        string = ""
+        state = epp.State(string)
+        parser = epp.hex_digit()
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_hex_digit_negative_2(self):
+        """ Test 'hex_digit' parser generator, negative check #2. """
+        string = "z"
+        state = epp.State(string)
+        parser = epp.hex_digit()
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_hex_digit_positive_1(self):
+        """ Test 'hex_digit' parser generator, positive check #1. """
+        string = "1aB"
+        state = epp.State(string)
+        parser = epp.many(epp.hex_digit())
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
     def test_newline_negative_1(self):
         """ Test 'newline' parser generator, negative check #1. """
         string = ""
@@ -551,6 +578,44 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.parsed, "\n")
 
     #--------- aggregates and variations of the above ---------#
+
+    def test_hex_int_negative_1(self):
+        """ Test 'hex_int' parser generator, negative check #1. """
+        string = "ttt"
+        state = epp.State(string)
+        parser = epp.hex_int()
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_hex_int_negative_2(self):
+        """ Test 'hex_int' parser generator, negative check #2. """
+        string = "00ab"
+        state = epp.State(string)
+        parser = epp.hex_int(must_have_prefix=True)
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_hex_int_positive_1(self):
+        """ Test 'hex_int' parser generator, positive check #1. """
+        string = "0xA"
+        state = epp.State(string)
+        parser = epp.hex_int(must_have_prefix=True)
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
+    def test_hex_int_positive_2(self):
+        """ Test 'hex_int' parser generator, positive check #2. """
+        string = "10"
+        state = epp.State(string)
+        parser = epp.hex_int(alter_state=True)
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertEqual(state_after.value, 0x10)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
 
     def test_integer_negative_1(self):
         """ Test 'integer' parser generator, negative check #1. """

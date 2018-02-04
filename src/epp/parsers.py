@@ -110,6 +110,22 @@ def digit():
     return res
 
 
+def hex_digit():
+    """
+    Return a parser that matches a single hexadecimal digit.
+    """
+    def res(state):
+        """ Parse a single hexadecimal digit. """
+        try:
+            char = state.left[0]
+        except IndexError:
+            raise core.ParsingFailure("Expected a hexadecimal digit, got the end of input")
+        if ('0' <= char <= '9') or ('a' <= char <= 'f') or ('A' <= char <= 'F'):
+            return state.consume(1)
+        raise core.ParsingFailure(f"Expected a hexadecimal digit, got '{char}'")
+    return res
+
+
 def newline():
     """
     Return a parser that will match a newline character.
@@ -172,6 +188,24 @@ def white_char(accept_newlines=False):
 
 
 #--------- aggregates and variations of the above ---------#
+
+
+def hex_int(alter_state=False, must_have_prefix=False):
+    """
+    Return a parser that will match integers in base 16 (with or without '0x'
+    prefix).
+
+    If 'alter_state' is truthy, replace state's value with the parsed integer,
+    otherwise leave it alone.
+
+    If 'must_have_prefix' is truthy, fail if '0x' prefix is omitted.
+    """
+    primary = many(hex_digit(), 1)
+    prefix = literal("0x") if must_have_prefix else maybe(literal("0x"))
+    if alter_state:
+        alter = core.modify(lambda s: s.set(value=int(s.parsed, 16)))
+        return core.chain([prefix, primary, alter])
+    return core.chain([prefix, primary])
 
 
 def integer(alter_state=False):
