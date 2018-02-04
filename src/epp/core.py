@@ -61,7 +61,7 @@ class State():
 
     def blank(self):
         """
-        Return a new State object with the same 'left' but with None 'parsed'
+        Return a new State object with the same 'left' but with empty 'parsed'
         value.
         """
         return State(self.left, self.value, "")
