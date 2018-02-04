@@ -64,7 +64,7 @@ class State():
         Return a new State object with the same 'left' but with None 'parsed'
         value.
         """
-        return State(self.left)
+        return State(self.left, self.value, "")
 
     def split(self, at):
         """
@@ -72,10 +72,8 @@ class State():
         the first will have 'left' up to, but not including, index 'at', the
         second - starting with 'at' and until the end.
         """
-        first = self.copy()
-        first.left = self.left[:at]
-        second = self.copy()
-        second.left = self.left[at:]
+        first = State(self.left[:at], self.value, self.parsed)
+        second = State(self.left[at:], self.value, self.parsed)
         return first, second
 
 
