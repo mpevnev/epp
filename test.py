@@ -855,6 +855,41 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(state_after.left, string)
         self.assertEqual(state_after.parsed, "")
 
+    def test_take_negative_1(self):
+        """ Test 'take' parser generator, negative check #1. """
+        with self.assertRaises(ValueError):
+            _ = epp.take(-1)
+
+    def test_take_negative_2(self):
+        """ Test 'take' parser generator, negative check #2. """
+        string = "123"
+        state = epp.State(string)
+        parser = epp.take(5, True)
+        state_after = epp.parse(state, parser)
+        self.assertIsNone(state_after)
+
+    def test_take_positive_1(self):
+        """ Test 'take' parser generator, positive check #1. """
+        string = "12345"
+        state = epp.State(string)
+        parser = epp.take(3)
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, "123")
+        self.assertEqual(state_after.left, "45")
+
+    def test_take_positive_2(self):
+        """ Test 'take' parser generator, positive check #2. """
+        string = "123"
+        state = epp.State(string)
+        parser = epp.take(5, False)
+        state_after = epp.parse(state, parser)
+        self.assertIsNotNone(state_after)
+        self.assertIsNone(state_after.value)
+        self.assertEqual(state_after.parsed, string)
+        self.assertEqual(state_after.left, "")
+
     def test_weave_negative_1(self):
         """ Test 'weave' parser generator, negative check #1. """
         string = "12131"

@@ -375,6 +375,25 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     return res
 
 
+def take(num, fail_on_fewer=True):
+    """
+    Return a parser that will consume exactly 'num' characters.
+
+    If 'fail_on_fewer' is truthy, fail if fewer than 'num' characters are
+    available.
+
+    Raise ValueError if 'num' is negative.
+    """
+    if num < 0:
+        raise ValueError("Negative number of consumed characters")
+    def res(state):
+        """ Consume a fixed number of characters. """
+        if fail_on_fewer and len(state.left) < num:
+            raise core.ParsingFailure(f"Less than requested number of characters received")
+        return state.consume(num)
+    return res
+
+
 def weave(parsers, separator, trailing=None):
     """
     Return a chain where each parser in 'parsers' is separated by 'separator'
