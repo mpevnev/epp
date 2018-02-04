@@ -11,7 +11,7 @@ setup(
     author="Michail Pevnev",
     author_email="mpevnev@gmail.com",
     description="Effectful pythonic parsers",
-    license="GPL-3",
+    license="LGPL-3",
     keywords="parser parsers",
     url="https://github.com/mpevnev/epp",
 )
