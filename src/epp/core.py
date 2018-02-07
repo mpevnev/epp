@@ -194,7 +194,7 @@ def parse(seed, state_or_string, parser, verbose=False):
             return failure
         return None
     except ParsingEnd as end:
-        if end.effect is not None:
+        if end.state.effect is not None:
             return end.state.effect(seed, end.state), end.state
         return seed, end.state
 
