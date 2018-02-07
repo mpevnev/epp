@@ -174,12 +174,11 @@ class Lookahead(enum.Enum):
 def parse(seed, state_or_string, parser, verbose=False):
     """
     Run a given parser on a given state object or a string, then apply combined
-    chain or parser's effects to 'seed' and return a tuple contaning the final
-    state as the first element and the converted 'seed' as the second.
-    If there were no effects in the chain, 'seed' is passed unchanged.
+    chain or parser's effects to 'seed' and return a tuple 
+    (seed after effects, final state).
 
-    If 'verbose' is truthy, return terminating ParsingFailure exception on
-    failure instead of None.
+    On failure, return None unless 'verbose' is truthy, in which case return
+    the ParsingFailure exception that has terminated the parsing process.
     """
     if isinstance(state_or_string, str):
         state = State(state_or_string)
@@ -188,7 +187,7 @@ def parse(seed, state_or_string, parser, verbose=False):
     try:
         after = parser(state)
         if after.effect is not None:
-            return after, after.effect(seed, after)
+            return after.effect(seed, after), after
         return after, seed
     except ParsingFailure as failure:
         if verbose:
@@ -196,7 +195,7 @@ def parse(seed, state_or_string, parser, verbose=False):
         return None
     except ParsingEnd as end:
         if end.effect is not None:
-            return end.state, end.state.effect(seed, end.state)
+            return end.state.effect(seed, end.state), end.state
         return end.state, seed
 
 
@@ -495,12 +494,13 @@ def reuse_iter(generator, *args, **kwargs):
 #--------- private helper things ---------#
 
 
-def _chain_effects(states):
+def _chain_effects(effect_points):
     """ Chain effects saved in 'states' together into a single effect. """
     def chained_effects(value, state):
         """ A chain of effects. """
-        value = state.effect(value, state)
-        for s in states:
+        if state.effect is not None:
+            value = state.effect(value, state)
+        for s in effect_points:
             value = s.effect(value, s)
         return value
     return chained_effects
