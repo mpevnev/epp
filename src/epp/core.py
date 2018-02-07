@@ -21,7 +21,7 @@ import enum
 #--------- base things ---------#
 
 
-class State(namedtuple("State", "string value left_start left_end parsed_start parsed_end")):
+class State(namedtuple("State", "string effect left_start left_end parsed_start parsed_end")):
     """
     State objects represent current state of a parser chain (or an individual
     parser).
@@ -35,27 +35,25 @@ class State(namedtuple("State", "string value left_start left_end parsed_start p
 
     A State object is immutable and has following fields:
     * string (str): the input the parser chain is supposed to parse.
-    * value (anything): an arbitrary object that was created by the parser
-      chain. A parser is supposed to create a new value, not modify an old one.
-      If you do modify it, you're liable to run into nasty surprises with
-      lookahead and branching.
+    * effect ((value, state) -> value): if the chain is successful, this will
+      be called in sequence with other effects from the chain to form the
+      chain's output value.
     * left_start, left_end (int): see above about the 'left' window.
     * parsed_start, parser_end (int): see above about the 'parsed' window.
 
     State objects are just named tuples, so they support a very convenient
-    '_replace' method.
-
-    State objects are indexable, indexing into them returns slices or
-    characters from the left portion of input and *not* from the whole input.
+    '_replace' method. Note: to avoid duplicating effects accidentally,
+    '_replace' treats lack of 'effect' in its arguments as 'effect=None'.
 
     State objects' constructor takes the following arguments:
     1. string - the input.
-    2. value=None - the value built by a parser chain.
+    2. effect=None - the effect, transformation to be performed on success of
+       the last parser.
     3. start=0 - will be translated into 'left_start'
     4. end=None - will be translated into 'left_end'. If set to None,
       'left_end' will be set to the length of the input.
-    State objects created via this constructor have both 'parsed_start' and 
-    'parsed_end' set to zero.
+    State objects created via this constructor have both 'parsed_start' and
+    'parsed_end' set to 'left_start'.
 
     State objects have several properties:
     * left - returns a slice of input that's left to parse.
@@ -69,32 +67,21 @@ class State(namedtuple("State", "string value left_start left_end parsed_start p
     * consume(how_many) - move 'how_many' characters from the left window into
       the parsed window. Raise ValueError if more input was consumed than left.
     * split(at) - split the State in two (and return them). The first keeps
-      the input up to, but not including, 'at' as its left, the second gets the
-      rest. Both have their 'parsed' windows reset to an empty string. Both
-      have the same 'value'.
+      the input up to, but not including, 'at' as its 'left' window, the second
+      gets the rest. Both have their 'parsed' windows reset to an empty string.
+      The first gets 'effect' of the original, the second gets None.
     """
 
-    def __new__(cls, string, value=None, start=0, end=None):
+    def __new__(cls, string, effect=None, start=0, end=None):
         if end is None:
             end = len(string)
-        assert 0 <= start <= end
-        return super().__new__(cls, string, value, start, end, 0, 0)
+        assert 0 <= start <= end <= len(string)
+        return super().__new__(cls, string, effect, start, end, start, start)
 
-    def __getindex__(self, ix):
-        if isinstance(ix, slice):
-            start = ix.start
-            if start < 0:
-                start += self.left_len
-            start += self.start
-            end = ix.stop
-            if end < 0:
-                end += self.left_len
-            end += self.start
-            return self.string[start:ix.step:end]
-        if ix < 0:
-            ix += self.left_len
-        ix += self.start
-        return self.string[ix]
+    def _replace(self, **kwargs):
+        if "effect" not in kwargs:
+            return super()._replace(effect=None, **kwargs)
+        return super()._replace(**kwargs)
 
     def consume(self, how_many):
         """
@@ -109,7 +96,7 @@ class State(namedtuple("State", "string value left_start left_end parsed_start p
         left_start = self.left_start + how_many
         parsed_start = self.left_start
         parsed_end = parsed_start + how_many
-        if new_start > self.left_end:
+        if left_start > self.left_end:
             raise ValueError("Consumed more characters than fits in the 'left' window")
         return self._replace(left_start=left_start, parsed_start=parsed_start,
                              parsed_end=parsed_end)
@@ -122,10 +109,12 @@ class State(namedtuple("State", "string value left_start left_end parsed_start p
         original State.
         """
         split_point = self.left_start + at
-        first = self._replace(left_end=split_point
+        first = self._replace(effect=self.effect,
+                              left_end=split_point,
                               parsed_start=self.left_start,
                               parsed_end=self.left_start)
-        second = self._replace(left_start=split_point,
+        second = self._replace(effect=None,
+                               left_start=split_point,
                                parsed_start=split_point,
                                parsed_end=split_point)
         return first, second
@@ -182,10 +171,11 @@ class Lookahead(enum.Enum):
     RELUCTANT = enum.auto()
 
 
-def parse(state_or_string, parser, verbose=False):
+def parse(seed, state_or_string, parser, verbose=False):
     """
-    Run a given parser on a given state object or a string.
-    Return parser's return value on success, or None on failure.
+    Run a given parser on a given state object or a string, then apply combined
+    chain or parser's effects to 'seed' and return the result. If there were no
+    effects in the chain, return 'seed' unchanged.
 
     If 'verbose' is truthy, return terminating ParsingFailure exception on
     failure instead of None.
@@ -195,7 +185,10 @@ def parse(state_or_string, parser, verbose=False):
     else:
         state = state_or_string
     try:
-        return parser(state)
+        after = parser(state)
+        if after.effect is not None:
+            return after.effect(seed, after)
+        return seed
     except ParsingFailure as failure:
         if verbose:
             return failure
@@ -205,19 +198,6 @@ def parse(state_or_string, parser, verbose=False):
 
 
 #--------- core parsers generators ---------#
-
-
-def absorb(func, parser):
-    """
-    Return a parser that will run 'parser' on the current state and absorb the
-    resulting state into main chain's state by replacing it with
-    > func(main_state, parsers_state).
-    """
-    def res(state):
-        """ Absorb other parser's return value. """
-        sub = parser(state)
-        return state._replace(value=func(state, sub), start=sub.start, cur=sub.cur)
-    return res
 
 
 def branch(funcs):
@@ -234,7 +214,7 @@ def branch(funcs):
                 return end.state
             except ParsingFailure:
                 continue
-        raise ParsingFailure("All the parsers in a branching point failed")
+        raise ParsingFailure("All parsers in a branching point have failed")
     return res
 
 
@@ -283,8 +263,12 @@ def chain(funcs, combine=True, stop_on_failure=False):
     Create a parser that chains a given iterable of parsers together, using
     output of one parser as input for another.
 
-    If 'combine' is truthy, combine 'parsed's of the parsers in the chain,
-    otherwise use the last one.
+    If 'combine' is truthy, resulting 'parsed' window will cover the input
+    between starting point of the first parser and the ending point of the
+    last one. Note that this might be different than what you'd get by
+    concatenating together individual 'parsed' windows if some of the parsers
+    performed unusual operations on their windows - like 'noconsume' does, for
+    example.
 
     If 'stop_on_failure' is truthy, stop parsing instead of failing it when a
     parser in the chain raises a ParsingFailure exception. Note that this also
@@ -301,15 +285,15 @@ def chain(funcs, combine=True, stop_on_failure=False):
     def res(state):
         """ A chain of parsers. """
         lookahead_chain = None
-        start = state.start
-        def maybe_combine(s):
+        start = state.left_start
+        effect_points = _CachedAppender()
+        def prep_output(s):
             """
-            Set 'parsed' of the output state to concatenation of parsed
-            strings.
+            Combine effects and (if 'combine' is truthy) 'parsed' windows.
             """
             if combine:
-                return s._replace(start=start)
-            return s
+                s = s._replace(parsed_start=start)
+            return s._replace(effect=_chain_effects(effect_points))
         for parser in funcs:
             if lookahead_chain is None and has_lookahead(parser):
                 lookahead_chain = _CachedAppender()
@@ -318,11 +302,13 @@ def chain(funcs, combine=True, stop_on_failure=False):
                 lookahead_chain.append(parser)
             try:
                 state = parser(state)
+                if state.effect is not None:
+                    effect_points.append(state)
             except ParsingEnd as end:
                 raise end
             except ParsingFailure as failure:
                 if stop_on_failure:
-                    return maybe_combine(state)
+                    return prep_output(state)
                 if lookahead_chain is None:
                     raise failure
                 pos = len(lookahead_chain) - 1
@@ -333,13 +319,25 @@ def chain(funcs, combine=True, stop_on_failure=False):
                             "Failed to find a combination of inputs that allows  "
                             "successful parsing")
                     _reset_chain(lookahead_chain, try_shift)
-                    state, failed = _try_chain(lookahead_chain, try_shift, combine)
+                    state, failed = _try_chain(lookahead_chain, try_shift, effect_points)
                     if state is None:
                         pos = failed
                         continue
                     break
-        return maybe_combine(state)
+        return prep_output(state)
     return res
+
+
+def effect(eff):
+    """
+    Register an effect in the chain. The argument should be a callable of two
+    arguments: the first is the value being built by effects, the second is the
+    remembered state of the parser chain.
+    """
+    def effect_(state):
+        """ Register an effect. """
+        return state._replace(effect=eff)
+    return effect_
 
 
 def fail():
@@ -352,7 +350,7 @@ def fail():
 
 def identity():
     """ Return a parser that passes state unchanged. """
-    return lambda state: state
+    return lambda state: state._replace()
 
 
 def lazy(generator, *args, **kwargs):
@@ -367,29 +365,12 @@ def lazy(generator, *args, **kwargs):
     return res
 
 
-def modify(transformer):
-    """
-    Return a parser that, when run, modifies chain state.
-
-    'transformer' should be a callable that takes a State object and returns a
-    new State object.
-
-    Note that 'parsed' of the resulting State object will be overwritten with
-    an empty string.
-    """
-    def res(state):
-        """ Modify chain's state. """
-        out = transformer(state)
-        return out._replace(start=state.cur)
-    return res
-
-
 def noconsume(parser):
     """ Return a version of 'parser' that doesn't consume input. """
     def res(state):
         """ Parse without consuming input. """
         output = parser(state)
-        return output._replace(start=state.start)
+        return output._replace(left_start=state.left_start)
     return res
 
 
@@ -397,8 +378,8 @@ def stop(discard=False):
     """
     Return a parser that stops parsing immediately.
 
-    Note that the thrown ParsingEnd exception will have the copy of the last
-    successful parser's State, unless 'discard' is truthy.
+    If 'discard' is truthy, truncate 'parsed' window, otherwise inherit it from
+    the previous parser.
 
     Also note that using this inside a chain with 'combine=True' will not
     result in previous parsers' chunks concatenated. Their effect on 'left' and
@@ -407,7 +388,9 @@ def stop(discard=False):
     def res(state):
         """ Stop parsing. """
         if discard:
-            raise ParsingEnd(state._replace(start=state.cur))
+            state = state._replace(parsed_start=state.left_start,
+                                   parsed_end=state.left_start)
+            raise ParsingEnd(state)
         raise ParsingEnd(state)
     return res
 
@@ -417,14 +400,13 @@ def test(testfn):
     Return a parser that succeeds consuming no input if testfn(state) returns a
     truthy value, and fails otherwise.
 
-    'parsed' is reset to an empty string.
+    'parsed' window is truncated.
     """
     def res(state):
         """ State testing function. """
         if testfn(state):
-            return state._replace(start=state.cur)
-        raise ParsingFailure(f"Function {testfn} returned a falsey value on "
-                             "'{state.string[state.start:20]}'")
+            return state._replace(parsed_start=state.left_start, parsed_end=state.left_start)
+        raise ParsingFailure(f"Function {testfn} returned a falsey value on '{state.left[0:20]}'")
     return res
 
 
@@ -506,6 +488,17 @@ def reuse_iter(generator, *args, **kwargs):
 #--------- private helper things ---------#
 
 
+def _chain_effects(states):
+    """ Chain effects saved in 'states' together into a single effect. """
+    def chained_effects(value, state):
+        """ A chain of effects. """
+        value = state.effect(value, state)
+        for s in states:
+            value = s.effect(value, s)
+        return value
+    return chained_effects
+
+
 def _overrestricted(parser):
     """ Return True if a parser is maximally restricted. """
     # isinstance may not be idiomatic, but it's safer than relying on parsers
@@ -513,6 +506,13 @@ def _overrestricted(parser):
     if not isinstance(parser, _RestrictedParser):
         return True
     return parser.overrestricted()
+
+
+def _reset(parser):
+    """ Reset restrictions on a parser. """
+    if not isinstance(parser, _RestrictedParser):
+        return
+    parser.reset()
 
 
 def _reset_chain(parsers, start_at):
@@ -542,13 +542,6 @@ def _restrict_more(parser):
     parser.restrict_more()
 
 
-def _reset(parser):
-    """ Reset restrictions on a parser. """
-    if not isinstance(parser, _RestrictedParser):
-        return
-    parser.reset()
-
-
 def _shift(parsers, from_pos):
     """
     Propagate restrictions' change from 'from_pos' to the left end of a parser
@@ -571,11 +564,11 @@ def _subparse(state, parser, at):
     """ Parse using only a portion of the input (namely, up to 'at'). """
     use, do_not = state.split(at)
     after = parser(use)
-    after = after._replace(end=do_not.end)
+    after = after._replace(left_end=do_not.left_end)
     return after
 
 
-def _try_chain(parsers, from_pos, combine):
+def _try_chain(parsers, from_pos, effect_points):
     """
     Try to parse the state the first parser in the chain remembers.
 
@@ -583,17 +576,21 @@ def _try_chain(parsers, from_pos, combine):
     In case of failure, 'state' will be None.
     """
     state = parsers[from_pos].state_before
-    start = state.start
+    new_effect_points = deque()
+    drop_effects_after = effect_points.find(lambda point: point is state)
     i = from_pos
     for i in range(from_pos, len(parsers)):
         try:
             state = parsers[i](state)
+            if state.effect is not None:
+                new_effect_points.append(state)
         except ParsingFailure:
             return (None, i)
         except ParsingEnd as end:
             raise end
-    if combine:
-        state = state._replace(start=start)
+    if drop_effects_after is not None:
+        effect_points.drop(len(effect_points) - (drop_effects_after + 1))
+    effect_points.extend(new_effect_points)
     return state, i
 
 
@@ -634,6 +631,34 @@ class _CachedAppender():
         self.changed = True
         self.empty = False
 
+    def drop(self, num):
+        """ Drop 'num' elements from the right end. """
+        for _ in range(num):
+            self.deque.pop()
+            self.changed = True
+        try:
+            _ = self.deque[0]
+        except IndexError:
+            self.empty = True
+
+    def extend(self, iterable):
+        """ Append all elements of an iterable. """
+        for item in iterable:
+            self.deque.append(item)
+            self.changed = True
+            self.empty = False
+
+    def find(self, pred):
+        """
+        Return the index of an element such that 'pred(element)' returns True
+        or None if no such element was found.
+        """
+        self.update()
+        for i, val in enumerate(self.deque):
+            if pred(val):
+                return i
+        return None
+
     def update(self):
         """ Syncronize the underlying list with the deque. """
         self.list = list(self.deque)
@@ -654,7 +679,7 @@ class _RestrictedParser():
         if self.lookahead is None:
             return self.parser(state)
         if self.lookahead is Lookahead.GREEDY:
-            return _subparse(state, self.parser, len(state.end) - self.delta)
+            return _subparse(state, self.parser, len(state.left_end) - self.delta)
         # is reluctant
         return _subparse(state, self.parser, self.delta)
 
@@ -664,7 +689,7 @@ class _RestrictedParser():
         either allowed input portion is shrinked into an empty string, or has
         extended beyond the bounds of leftover input.
         """
-        return self.delta > self.state_before.end - self.state_before.start
+        return self.delta > self.state_before.left_end - self.state_before.left_start
 
     def reset(self):
         """ Reset restrictions. """
