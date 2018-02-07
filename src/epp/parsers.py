@@ -249,7 +249,7 @@ def end_of_input():
     """ Return a parser that matches only if there is no input left. """
     def res(state):
         """ Match the end of input. """
-        if state.cur == state.end:
+        if state.left_start == state.left_end:
             return state._replace()
         raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
     return res
