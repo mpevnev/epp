@@ -209,7 +209,6 @@ def integer():
     return many(digit(), 1)
 
 
-# TODO
 def line(include_newline=False):
     """
     Return a parser that will match a line terminated by a newline.
@@ -227,10 +226,13 @@ def line(include_newline=False):
             char = state.string[state.left_start + pos]
             if ord(char) in _LINE_SEPARATORS:
                 if include_newline:
-                    pos += 1
-                break
+                    return state.consume(pos + 1)
+                return state._replace(
+                    left_start=state.left_start + pos + 1,
+                    parsed_start=state.left_start,
+                    parsed_end=state.left_start + pos)
             pos += 1
-        return state.consume(pos)
+        return state.consume(length)
     return res
 
 
@@ -341,7 +343,6 @@ def multi(literals):
     return core.branch(core.reuse_iter(map, literal, literals))
 
 
-# TODO
 def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     """
     Return a parser that will call
@@ -360,7 +361,24 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
         raise ValueError("A non-positive 'window_size'")
     def res(state):
         """ Repeatedly check a condition on windows of given width. """
-        raise ParsingFailure("TEMP")
+        start = state.left_start
+        rep = 0
+        while True:
+            window_start = state.left_start + rep * window_size
+            window_end = window_start + window_size
+            window = state.left[window_start:window_end]
+            if cond(state, window):
+                rep += 1
+                continue
+            if rep < min_repetitions:
+                raise core.ParsingFailure("Failed to achieve required minimum of repetitions")
+            if combine:
+                return state._replace(left_start=window_start,
+                                      parsed_start=start,
+                                      parsed_end=window_start)
+            return state._replace(left_start=window_start,
+                                  parsed_start=window_start - window_size,
+                                  parsed_end=window_start)
     return res
 
 
@@ -379,7 +397,7 @@ def take(num, fail_on_fewer=True):
         """ Consume a fixed number of characters. """
         if fail_on_fewer and state.left_len < num:
             raise core.ParsingFailure(f"Less than requested number of characters received")
-        return state.consume(num)
+        return state.consume(min(num, state.left_len))
     return res
 
 

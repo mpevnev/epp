@@ -523,7 +523,7 @@ class TestParsers(unittest.TestCase):
         string = "1aB"
         state = epp.State(string)
         parser = epp.many(epp.hex_digit())
-        output = epp.parse(state, parser)
+        output = epp.parse(None, state, parser)
         self.assertIsNotNone(output)
         value, after = output
         self.assertIsNone(value)
@@ -551,7 +551,7 @@ class TestParsers(unittest.TestCase):
         string = "\nb"
         state = epp.State(string)
         parser = epp.newline()
-        output = epp.parse(state, parser)
+        output = epp.parse(None, state, parser)
         self.assertIsNotNone(output)
         value, after = output
         self.assertIsNone(value)
@@ -684,7 +684,7 @@ class TestParsers(unittest.TestCase):
         """ Test 'integer' parser generator, positive check #1. """
         string = "123foo"
         state = epp.State(string)
-        parser = epp.integer(False)
+        parser = epp.integer()
         output = epp.parse(None, state, parser)
         self.assertIsNotNone(output)
         value, after = output
@@ -799,7 +799,7 @@ class TestParsers(unittest.TestCase):
         string = ""
         state = epp.State(string)
         parser = epp.end_of_input()
-        output = epp.parse(state, parser)
+        output = epp.parse(None, state, parser)
         self.assertIsNotNone(output)
         value, after = output
         self.assertIsNone(value)
@@ -1069,7 +1069,6 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(after.left, "")
 
 
-@unittest.skip("temp")
 class TestLookahead(unittest.TestCase):
     """ Test lookahead mechanism. """
 
@@ -1078,19 +1077,20 @@ class TestLookahead(unittest.TestCase):
         string = "2"
         state = epp.State(string)
         parser = epp.chain([epp.greedy(epp.literal("1"))])
-        state_after = epp.parse(state, parser)
-        self.assertIsNone(state_after)
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
 
     def test_greedy_positive_1(self):
         """ Test 'greedy' lookahead mode, positive check #1. """
         string = "foo!"
         state = epp.State(string)
         parser = epp.chain([epp.greedy(epp.everything()), epp.literal("!")])
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, string)
-        self.assertEqual(state_after.left, "")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, string)
+        self.assertEqual(after.left, "")
 
     def test_greedy_positive_2(self):
         """ Test 'greedy' lookahead mode, positive check #2. """
@@ -1099,11 +1099,12 @@ class TestLookahead(unittest.TestCase):
         parser = epp.chain(
             [epp.greedy(epp.many(epp.literal("fo"))),
              epp.literal("fo")])
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, string)
-        self.assertEqual(state_after.left, "")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, string)
+        self.assertEqual(after.left, "")
 
     def test_interplay_negative_1(self):
         """ Test 'greedy' and 'reluctant' interplay, negative check 1. """
@@ -1113,8 +1114,8 @@ class TestLookahead(unittest.TestCase):
             [epp.greedy(epp.many(epp.literal("a"))),
              epp.reluctant(epp.many(epp.literal("b"))),
              epp.literal("c")])
-        state_after = epp.parse(state, parser)
-        self.assertIsNone(state_after)
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
 
     def test_interplay_positive_1(self):
         """ Test 'greedy' and 'reluctant' interplay, positive check #1. """
@@ -1124,11 +1125,12 @@ class TestLookahead(unittest.TestCase):
             [epp.greedy(epp.many(epp.literal("a"))),
              epp.reluctant(epp.many(epp.literal("b"), min_hits=1)),
              epp.everything()], False)
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, "bd")
-        self.assertEqual(state_after.left, "")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, "bd")
+        self.assertEqual(after.left, "")
 
     def test_interplay_positive_2(self):
         """ Test 'greedy' and 'reluctant' interplay, positive check #2. """
@@ -1138,41 +1140,44 @@ class TestLookahead(unittest.TestCase):
             [epp.reluctant(epp.many(epp.literal("a"))),
              epp.greedy(epp.many(epp.literal("b"), min_hits=1)),
              epp.everything()], False)
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, "d")
-        self.assertEqual(state_after.left, "")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, "d")
+        self.assertEqual(after.left, "")
 
     def test_reluctant_negative_1(self):
         """ Test 'reluctant' lookahead mode, negative check #1. """
         string = "2"
         state = epp.State(string)
         parser = epp.chain([epp.reluctant(epp.literal("1"))])
-        state_after = epp.parse(state, parser)
-        self.assertIsNone(state_after)
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
 
     def test_reluctant_positive_1(self):
         """ Test 'reluctant' lookahead mode, positive check #1. """
         string = "foo"
         state = epp.State(string)
         parser = epp.chain([epp.reluctant(epp.everything())])
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, "")
-        self.assertEqual(state_after.left, string)
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, "")
+        self.assertEqual(after.left, string)
 
     def test_reluctant_positive_2(self):
         """ Test 'reluctant' lookahead mode, positive check #2. """
         string = "foo!bar"
         state = epp.State(string)
         parser = epp.chain([epp.reluctant(epp.everything()), epp.literal("!")])
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, "foo!")
-        self.assertEqual(state_after.left, "bar")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, "foo!")
+        self.assertEqual(after.left, "bar")
 
     def test_reluctant_positive_3(self):
         """ Test 'reluctant' lookahead mode, positive check #3. """
@@ -1181,11 +1186,12 @@ class TestLookahead(unittest.TestCase):
         parser = epp.chain(
             [epp.reluctant(epp.many(epp.literal("fo"), min_hits=1)),
              epp.literal("fo")])
-        state_after = epp.parse(state, parser)
-        self.assertIsNotNone(state_after)
-        self.assertIsNone(state_after.value)
-        self.assertEqual(state_after.parsed, "fofo")
-        self.assertEqual(state_after.left, "fo")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, "fofo")
+        self.assertEqual(after.left, "fo")
 
 
 if __name__ == "__main__":

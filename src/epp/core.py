@@ -684,7 +684,7 @@ class _RestrictedParser():
         if self.lookahead is None:
             return self.parser(state)
         if self.lookahead is Lookahead.GREEDY:
-            return _subparse(state, self.parser, len(state.left_end) - self.delta)
+            return _subparse(state, self.parser, state.left_len - self.delta)
         # is reluctant
         return _subparse(state, self.parser, self.delta)
 
