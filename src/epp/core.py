@@ -498,8 +498,6 @@ def _chain_effects(effect_points):
     """ Chain effects saved in 'states' together into a single effect. """
     def chained_effects(value, state):
         """ A chain of effects. """
-        if state.effect is not None:
-            value = state.effect(value, state)
         for s in effect_points:
             value = s.effect(value, s)
         return value
