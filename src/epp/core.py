@@ -189,7 +189,7 @@ def parse(seed, state_or_string, parser, verbose=False):
         after = parser(state)
         if after.effect is not None:
             return after, after.effect(seed, after)
-        return state, seed
+        return after, seed
     except ParsingFailure as failure:
         if verbose:
             return failure
