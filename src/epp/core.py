@@ -188,7 +188,7 @@ def parse(seed, state_or_string, parser, verbose=False):
         after = parser(state)
         if after.effect is not None:
             return after.effect(seed, after), after
-        return after, seed
+        return seed, after
     except ParsingFailure as failure:
         if verbose:
             return failure
@@ -196,7 +196,7 @@ def parse(seed, state_or_string, parser, verbose=False):
     except ParsingEnd as end:
         if end.effect is not None:
             return end.state.effect(seed, end.state), end.state
-        return end.state, seed
+        return seed, end.state
 
 
 #--------- core parsers generators ---------#
