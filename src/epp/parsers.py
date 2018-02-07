@@ -25,7 +25,7 @@ def alnum(ascii_only=False):
     def res(state):
         """ Match an alphanumeric character. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected an alphanumeric character, got the end of input")
         if ascii_only:
@@ -48,7 +48,7 @@ def alpha(ascii_only=False):
     def res(state):
         """ Match an alphabetic character. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected an alphabetic character, got the end of input")
         if ascii_only:
@@ -66,7 +66,7 @@ def any_char():
     def res(state):
         """ Match a single character. """
         try:
-            _ = state.left[0]
+            _ = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a character, got the end of input")
         return state.consume(1)
@@ -85,7 +85,7 @@ def cond_char(condition):
     def res(state):
         """ Match a character that passes a conditional check. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a character, got the end of input")
         if condition(char):
@@ -101,7 +101,7 @@ def digit():
     def res(state):
         """ Parse a single decimal digit. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a digit, got the end of input")
         if '0' <= char <= '9':
@@ -117,7 +117,7 @@ def hex_digit():
     def res(state):
         """ Parse a single hexadecimal digit. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a hexadecimal digit, got the end of input")
         if ('0' <= char <= '9') or ('a' <= char <= 'f') or ('A' <= char <= 'F'):
@@ -135,7 +135,7 @@ def newline():
     def res(state):
         """ Parse a newline character. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a newline, got the end of input")
         if ord(char) in _LINE_SEPARATORS:
@@ -149,7 +149,7 @@ def nonwhite_char():
     def res(state):
         """ Match a non-whitespace character. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure(
                 "Expected a non-whitespace character, got the end of input")
@@ -168,7 +168,7 @@ def white_char(accept_newlines=False):
     def res(state):
         """ Match a character of whitespace. """
         try:
-            char = state.left[0]
+            char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a whitespace character, got the end of input")
         if accept_newlines:
@@ -190,62 +190,47 @@ def white_char(accept_newlines=False):
 #--------- aggregates and variations of the above ---------#
 
 
-def hex_int(alter_state=False, must_have_prefix=False):
+def hex_int(must_have_prefix=False):
     """
     Return a parser that will match integers in base 16 (with or without '0x'
     prefix).
-
-    If 'alter_state' is truthy, replace state's value with the parsed integer,
-    otherwise leave it alone.
 
     If 'must_have_prefix' is truthy, fail if '0x' prefix is omitted.
     """
     primary = many(hex_digit(), 1)
     prefix = literal("0x") if must_have_prefix else maybe(literal("0x"))
-    if alter_state:
-        alter = core.modify(lambda s: s.set(value=int(s.parsed, 16)))
-        return core.chain([prefix, primary, alter])
     return core.chain([prefix, primary])
 
 
-def integer(alter_state=False):
+def integer():
     """
     Return a parser that will match integers in base 10.
-
-    If 'alter_state' is set to a true value, replace state's value with the
-    parsed integer, otherwise leave it alone.
     """
-    res = many(digit(), 1)
-    if alter_state:
-        res = core.chain([res, core.modify(lambda s: s.set(value=int(s.parsed)))])
-    return res
+    return many(digit(), 1)
 
 
-def line(keep_newline=False):
+# TODO
+def line(include_newline=False):
     """
     Return a parser that will match a line terminated by a newline.
 
-    If 'keep_newline' is truthy, the terminating newline will be retained in
-    the 'parsed' field of the resulting State object, otherwise it won't be.
-    The newline is removed from the input in any case.
+    If 'include_newline' is truthy, 'parsed' window will contain the
+    terminating newline, otherwise it will not.
     """
     def res(state):
         """ Match a line optionally terminated by a newline character. """
         pos = 0
-        length = len(state.left)
+        length = state.left_len
         if length == 0:
             raise core.ParsingFailure("Expected a line, got an end of input")
         while pos < length:
-            char = state.left[pos]
+            char = state.string[state.left_start + pos]
             if ord(char) in _LINE_SEPARATORS:
-                if keep_newline:
+                if include_newline:
                     pos += 1
                 break
             pos += 1
-        if keep_newline:
-            return state.consume(pos)
-        output = state.set(parsed=state.left[:pos], left=state.left[pos+1:])
-        return output
+        return state.consume(pos)
     return res
 
 
@@ -264,8 +249,8 @@ def end_of_input():
     """ Return a parser that matches only if there is no input left. """
     def res(state):
         """ Match the end of input. """
-        if state.left == "":
-            return state.set(parsed="")
+        if state.cur == state.end:
+            return state._replace()
         raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
     return res
 
@@ -274,10 +259,9 @@ def everything():
     """ Return a parser that consumes all remaining input. """
     def res(state):
         """ Consume all remaining input. """
-        output = state.copy()
-        output.left = ""
-        output.parsed = state.left
-        return output
+        return state._replace(parsed_start=state.left_start,
+                              parsed_end=state.left_end,
+                              left_start=state.left_end)
     return res
 
 
@@ -287,9 +271,13 @@ def literal(lit):
     """
     def res(state):
         """ Match a literal. """
-        if state.left.startswith(lit):
-            return state.set(left=state.left[len(lit):], parsed=lit)
-        raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with '{lit}'")
+        if state.left_len < len(lit):
+            raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with {lit}")
+        i = -1
+        for i, char in enumerate(lit):
+            if char != state.string[state.left_start + i]:
+                raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with {lit}")
+        return state.consume(i + 1)
     return res
 
 
@@ -305,7 +293,8 @@ def maybe(parser):
         try:
             return parser(state)
         except core.ParsingFailure:
-            return state.copy()
+            return state._replace(parsed_start=state.left_start,
+                                  parsed_end=state.left_start)
     return res
 
 
@@ -349,20 +338,14 @@ def multi(literals):
     """
     Return a parser that will match any of given literals.
     """
-    def res(state):
-        """ Match any of given literals. """
-        for lit in literals:
-            if state.left.startswith(lit):
-                return state.set(left=state.left[len(lit):], parsed=lit)
-        anyof = ", ".join(map(lambda s: f"\"{s}\"", literals))
-        raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with any of ({anyof})")
-    return res
+    return core.branch(core.reuse_iter(map, literal, literals))
 
 
+# TODO
 def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     """
     Return a parser that will call
-    > cond(state, state.left[:window_size])
+    > cond(state, state[:window_size])
     repeatedly consuming 'window_size' characters from the input, until 'cond'
     returns a falsey value. Note that the last window may be less than
     'window_size' characters long.
@@ -377,35 +360,7 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
         raise ValueError("A non-positive 'window_size'")
     def res(state):
         """ Repeatedly check a condition on windows of given width. """
-        state = state.copy()
-        i = 0
-        pos = 0
-        while state.left != "":
-            window = state.left[pos:pos + window_size]
-            if not cond(state, window):
-                if i < min_repetitions:
-                    raise core.ParsingFailure("Less than requested minimum of repetitions achieved")
-                if i > 0:
-                    if combine:
-                        state.parsed = state.left[0:pos]
-                    else:
-                        state.parsed = state.left[pos - window_size:pos]
-                else:
-                    state.parsed = ""
-                state.left = state.left[pos:]
-                return state
-            i += 1
-            pos += window_size
-        if i < min_repetitions:
-            raise core.ParsingFailure("Less than requested minimum of repetitions achieved.")
-        if i > 0:
-            if combine:
-                state.parsed = state.left[0:pos]
-            else:
-                state.parsed = state.left[pos - window_size:pos]
-        else:
-            state.parsed = ""
-        return state
+        raise ParsingFailure("TEMP")
     return res
 
 
@@ -422,7 +377,7 @@ def take(num, fail_on_fewer=True):
         raise ValueError("Negative number of consumed characters")
     def res(state):
         """ Consume a fixed number of characters. """
-        if fail_on_fewer and len(state.left) < num:
+        if fail_on_fewer and state.left_len < num:
             raise core.ParsingFailure(f"Less than requested number of characters received")
         return state.consume(num)
     return res
