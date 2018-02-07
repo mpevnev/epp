@@ -174,8 +174,9 @@ class Lookahead(enum.Enum):
 def parse(seed, state_or_string, parser, verbose=False):
     """
     Run a given parser on a given state object or a string, then apply combined
-    chain or parser's effects to 'seed' and return the result. If there were no
-    effects in the chain, return 'seed' unchanged.
+    chain or parser's effects to 'seed' and return a tuple contaning the final
+    state as the first element and the converted 'seed' as the second.
+    If there were no effects in the chain, 'seed' is passed unchanged.
 
     If 'verbose' is truthy, return terminating ParsingFailure exception on
     failure instead of None.
@@ -187,14 +188,16 @@ def parse(seed, state_or_string, parser, verbose=False):
     try:
         after = parser(state)
         if after.effect is not None:
-            return after.effect(seed, after)
-        return seed
+            return after, after.effect(seed, after)
+        return state, seed
     except ParsingFailure as failure:
         if verbose:
             return failure
         return None
     except ParsingEnd as end:
-        return end.state
+        if end.effect is not None:
+            return end.state, end.state.effect(seed, end.state)
+        return end.state, seed
 
 
 #--------- core parsers generators ---------#
@@ -281,6 +284,10 @@ def chain(funcs, combine=True, stop_on_failure=False):
     times - be it because of lookahead or for different reasons - make sure to
     wrap the iterator in list or some other *reusable* iterable (or call
     'reuse_iter' on it, if it comes from a function).
+
+    Note that chains are all-or-nothing constructs - if a chain is terminated
+    in any way - by ParsingFailure or ParsingEnd or any other exception - the
+    effects of the part of the chain that was applied will not be saved.
     """
     def res(state):
         """ A chain of parsers. """
