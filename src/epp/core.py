@@ -42,8 +42,9 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
     * parsed_start, parser_end (int): see above about the 'parsed' window.
 
     State objects are just named tuples, so they support a very convenient
-    '_replace' method. Note: to avoid duplicating effects accidentally,
-    '_replace' treats lack of 'effect' in its arguments as 'effect=None'.
+    '_replace' method. !Note!: to avoid duplicating effects accidentally,
+    '_replace' treats lack of 'effect' in its arguments as 'effect=None'. So if
+    you want to copy effect from another parser, you have to do it explicitly.
 
     State objects' constructor takes the following arguments:
     1. string - the input.
@@ -72,11 +73,11 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
       The first gets 'effect' of the original, the second gets None.
     """
 
-    def __new__(cls, string, effect=None, start=0, end=None):
+    def __new__(cls, string, eff=None, start=0, end=None):
         if end is None:
             end = len(string)
         assert 0 <= start <= end <= len(string)
-        return super().__new__(cls, string, effect, start, end, start, start)
+        return super().__new__(cls, string, eff, start, end, start, start)
 
     def _replace(self, **kwargs):
         if "effect" not in kwargs:
@@ -174,7 +175,7 @@ class Lookahead(enum.Enum):
 def parse(seed, state_or_string, parser, verbose=False):
     """
     Run a given parser on a given state object or a string, then apply combined
-    chain or parser's effects to 'seed' and return a tuple 
+    chain or parser's effects to 'seed' and return a tuple
     (seed after effects, final state).
 
     On failure, return None unless 'verbose' is truthy, in which case return
@@ -260,7 +261,7 @@ def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
     return res
 
 
-def chain(funcs, combine=True, stop_on_failure=False):
+def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
     """
     Create a parser that chains a given iterable of parsers together, using
     output of one parser as input for another.
@@ -276,6 +277,11 @@ def chain(funcs, combine=True, stop_on_failure=False):
     parser in the chain raises a ParsingFailure exception. Note that this also
     includes parsers with lookahead, effectively disabling it.
 
+    If 'all_or_nothing' is truthy (the default), a ParsingEnd exception thrown
+    inside it will not cause the effects gathered so far to be registered and
+    part of the string parsed so far to be marked as 'parsed'. If the parameter
+    is falsey, partial application of effects and parsers is possible.
+
     A note on using iterators in chains: if supplied 'funcs' is an iterator,
     there is a possibility of 'funcs' being exausted on the first attempt to
     parse, with subsequent attempts silently succeeding because that's the
@@ -283,10 +289,6 @@ def chain(funcs, combine=True, stop_on_failure=False):
     times - be it because of lookahead or for different reasons - make sure to
     wrap the iterator in list or some other *reusable* iterable (or call
     'reuse_iter' on it, if it comes from a function).
-
-    Note that chains are all-or-nothing constructs - if a chain is terminated
-    in any way - by ParsingFailure or ParsingEnd or any other exception - the
-    effects of the part of the chain that was applied will not be saved.
     """
     def res(state):
         """ A chain of parsers. """
@@ -300,6 +302,18 @@ def chain(funcs, combine=True, stop_on_failure=False):
             if combine:
                 s = s._replace(parsed_start=start)
             return s._replace(effect=_chain_effects(effect_points))
+        def handle_stop(end):
+            """ Handle ParsingEnd exception. """
+            if all_or_nothing:
+                raise end
+            effchain = _chain_effects(effect_points)
+            if end.state.effect is not None:
+                effchain = _chain_effects([effchain, end.state.effect])
+            if combine:
+                end.state = end.state._replace(effect=effchain, parsed_start=start)
+            else:
+                end.state = end.state._replace(effect=effchain)
+            raise end
         for parser in funcs:
             if lookahead_chain is None and has_lookahead(parser):
                 lookahead_chain = _CachedAppender()
@@ -311,7 +325,7 @@ def chain(funcs, combine=True, stop_on_failure=False):
                 if state.effect is not None:
                     effect_points.append(state)
             except ParsingEnd as end:
-                raise end
+                handle_stop(end)
             except ParsingFailure as failure:
                 if stop_on_failure:
                     return prep_output(state)
@@ -325,7 +339,10 @@ def chain(funcs, combine=True, stop_on_failure=False):
                             "Failed to find a combination of inputs that allows  "
                             "successful parsing")
                     _reset_chain(lookahead_chain, try_shift)
-                    state, failed = _try_chain(lookahead_chain, try_shift, effect_points)
+                    try:
+                        state, failed = _try_chain(lookahead_chain, try_shift, effect_points)
+                    except ParsingEnd as end:
+                        handle_stop(end)
                     if state is None:
                         pos = failed
                         continue
@@ -592,6 +609,9 @@ def _try_chain(parsers, from_pos, effect_points):
         except ParsingFailure:
             return (None, i)
         except ParsingEnd as end:
+            if drop_effects_after is not None:
+                effect_points.drop(len(effect_points) - (drop_effects_after + 1))
+            effect_points.extend(new_effect_points)
             raise end
     if drop_effects_after is not None:
         effect_points.drop(len(effect_points) - (drop_effects_after + 1))
