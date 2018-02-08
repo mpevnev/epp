@@ -306,9 +306,9 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
             """ Handle ParsingEnd exception. """
             if all_or_nothing:
                 raise end
-            effchain = _chain_effects(effect_points)
             if end.state.effect is not None:
-                effchain = _chain_effects([effchain, end.state.effect])
+                effect_points.append(end.state)
+            effchain = _chain_effects(effect_points)
             if combine:
                 end.state = end.state._replace(effect=effchain, parsed_start=start)
             else:
