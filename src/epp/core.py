@@ -376,7 +376,7 @@ def noconsume(parser):
     def res(state):
         """ Parse without consuming input. """
         output = parser(state)
-        return output._replace(left_start=state.left_start)
+        return output._replace(effect=output.effect, left_start=state.left_start)
     return res
 
 
