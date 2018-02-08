@@ -403,18 +403,13 @@ def stop(discard=False):
 
     If 'discard' is truthy, truncate 'parsed' window, otherwise inherit it from
     the previous parser.
-
-    Also note that using this inside a chain with 'combine=True' will not
-    result in previous parsers' chunks concatenated. Their effect on 'left' and
-    'value' will persist, though.
     """
     def stop_body(state):
         """ Stop parsing. """
         if discard:
             state = state._replace(parsed_start=state.left_start,
                                    parsed_end=state.left_start)
-            raise ParsingEnd(state)
-        raise ParsingEnd(state)
+        raise ParsingEnd(state._replace())
     return stop_body
 
 
