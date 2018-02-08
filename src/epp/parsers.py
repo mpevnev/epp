@@ -22,7 +22,7 @@ def alnum(ascii_only=False):
     If 'ascii_only' is truthy, match only ASCII alphanumeric characters
     ([a-zA-Z0-9]), not whatever makes .isalnum() return True.
     """
-    def res(state):
+    def alnum_body(state):
         """ Match an alphanumeric character. """
         try:
             char = state.string[state.left_start]
@@ -35,7 +35,7 @@ def alnum(ascii_only=False):
         if char.isalnum():
             return state.consume(1)
         raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
-    return res
+    return alnum_body
 
 
 def alpha(ascii_only=False):
@@ -45,7 +45,7 @@ def alpha(ascii_only=False):
     If 'ascii_only' is truthy, match only ASCII alphabetic characters, not
     everything for which .isalpha() returns True.
     """
-    def res(state):
+    def alpha_body(state):
         """ Match an alphabetic character. """
         try:
             char = state.string[state.left_start]
@@ -58,19 +58,19 @@ def alpha(ascii_only=False):
         if char.isalpha():
             return state.consume(1)
         raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
-    return res
+    return alpha_body
 
 
 def any_char():
     """ Return a parser that would match any character. """
-    def res(state):
+    def any_char_body(state):
         """ Match a single character. """
         try:
             _ = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure("Expected a character, got the end of input")
         return state.consume(1)
-    return res
+    return any_char_body
 
 
 def cond_char(condition):
@@ -82,7 +82,7 @@ def cond_char(condition):
     """
     if not callable(condition):
         raise ValueError(f"{condition} is not callable")
-    def res(state):
+    def cond_char_body(state):
         """ Match a character that passes a conditional check. """
         try:
             char = state.string[state.left_start]
@@ -91,14 +91,14 @@ def cond_char(condition):
         if condition(char):
             return state.consume(1)
         raise core.ParsingFailure(f"{char} did not pass the {condition} test")
-    return res
+    return cond_char_body
 
 
 def digit():
     """
     Return a parser that would match a single decimal digit.
     """
-    def res(state):
+    def digit_body(state):
         """ Parse a single decimal digit. """
         try:
             char = state.string[state.left_start]
@@ -107,14 +107,14 @@ def digit():
         if '0' <= char <= '9':
             return state.consume(1)
         raise core.ParsingFailure(f"Expected a digit, got '{char}'")
-    return res
+    return digit_body
 
 
 def hex_digit():
     """
     Return a parser that matches a single hexadecimal digit.
     """
-    def res(state):
+    def hex_digit_body(state):
         """ Parse a single hexadecimal digit. """
         try:
             char = state.string[state.left_start]
@@ -123,7 +123,7 @@ def hex_digit():
         if ('0' <= char <= '9') or ('a' <= char <= 'f') or ('A' <= char <= 'F'):
             return state.consume(1)
         raise core.ParsingFailure(f"Expected a hexadecimal digit, got '{char}'")
-    return res
+    return hex_digit_body
 
 
 def newline():
@@ -132,7 +132,7 @@ def newline():
 
     For Windows users: this will match a single \\r or \\n from a \\n\\r pair.
     """
-    def res(state):
+    def newline_body(state):
         """ Parse a newline character. """
         try:
             char = state.string[state.left_start]
@@ -141,12 +141,12 @@ def newline():
         if ord(char) in _LINE_SEPARATORS:
             return state.consume(1)
         raise core.ParsingFailure(f"Expected a newline, got '{char}'")
-    return res
+    return newline_body
 
 
 def nonwhite_char():
     """ Return a parser that will match a character of anything but whitespace. """
-    def res(state):
+    def nonwhite_char_body(state):
         """ Match a non-whitespace character. """
         try:
             char = state.string[state.left_start]
@@ -157,7 +157,7 @@ def nonwhite_char():
             raise core.ParsingFailure(
                 "Got a whitespace character when expecting a non-whitespace one")
         return state.consume(1)
-    return res
+    return nonwhite_char_body
 
 
 def white_char(accept_newlines=False):
@@ -165,7 +165,7 @@ def white_char(accept_newlines=False):
     Return a parser that will match a character of whitespace, optionally also
     matching newline characters.
     """
-    def res(state):
+    def white_char_body(state):
         """ Match a character of whitespace. """
         try:
             char = state.string[state.left_start]
@@ -184,7 +184,7 @@ def white_char(accept_newlines=False):
                 return state.consume(1)
             else:
                 raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
-    return res
+    return white_char_body
 
 
 #--------- aggregates and variations of the above ---------#
@@ -216,7 +216,7 @@ def line(include_newline=False):
     If 'include_newline' is truthy, 'parsed' window will contain the
     terminating newline, otherwise it will not.
     """
-    def res(state):
+    def line_body(state):
         """ Match a line optionally terminated by a newline character. """
         pos = 0
         length = state.left_len
@@ -233,7 +233,7 @@ def line(include_newline=False):
                     parsed_end=state.left_start + pos)
             pos += 1
         return state.consume(length)
-    return res
+    return line_body
 
 
 def whitespace(min_num=1, accept_newlines=False):
@@ -249,29 +249,29 @@ def whitespace(min_num=1, accept_newlines=False):
 
 def end_of_input():
     """ Return a parser that matches only if there is no input left. """
-    def res(state):
+    def end_of_input_body(state):
         """ Match the end of input. """
         if state.left_start == state.left_end:
             return state._replace()
         raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
-    return res
+    return end_of_input_body
 
 
 def everything():
     """ Return a parser that consumes all remaining input. """
-    def res(state):
+    def everything_body(state):
         """ Consume all remaining input. """
         return state._replace(parsed_start=state.left_start,
                               parsed_end=state.left_end,
                               left_start=state.left_end)
-    return res
+    return everything_body
 
 
 def literal(lit):
     """
     Return a parser that will match a given literal and remove it from input.
     """
-    def res(state):
+    def literal_body(state):
         """ Match a literal. """
         if state.left_len < len(lit):
             raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with {lit}")
@@ -280,7 +280,7 @@ def literal(lit):
             if char != state.string[state.left_start + i]:
                 raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with {lit}")
         return state.consume(i + 1)
-    return res
+    return literal_body
 
 
 def maybe(parser):
@@ -288,7 +288,7 @@ def maybe(parser):
     Return a parser that will match whatever 'parser' matches, and if 'parser'
     fails, matches and consumes nothing.
     """
-    def res(state):
+    def maybe_body(state):
         """
         Match whatever another parser matches, or consume no input if it fails.
         """
@@ -297,7 +297,7 @@ def maybe(parser):
         except core.ParsingFailure:
             return state._replace(parsed_start=state.left_start,
                                   parsed_end=state.left_start)
-    return res
+    return maybe_body
 
 
 def many(parser, min_hits=0, max_hits=0, combine=True):
@@ -359,7 +359,7 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
     """
     if window_size <= 0:
         raise ValueError("A non-positive 'window_size'")
-    def res(state):
+    def repeat_while_body(state):
         """ Repeatedly check a condition on windows of given width. """
         start = state.left_start
         rep = 0
@@ -379,7 +379,7 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
             return state._replace(left_start=window_start,
                                   parsed_start=window_start - window_size,
                                   parsed_end=window_start)
-    return res
+    return repeat_while_body
 
 
 def take(num, fail_on_fewer=True):
@@ -393,12 +393,12 @@ def take(num, fail_on_fewer=True):
     """
     if num < 0:
         raise ValueError("Negative number of consumed characters")
-    def res(state):
+    def take_body(state):
         """ Consume a fixed number of characters. """
         if fail_on_fewer and state.left_len < num:
             raise core.ParsingFailure(f"Less than requested number of characters received")
         return state.consume(min(num, state.left_len))
-    return res
+    return take_body
 
 
 def weave(parsers, separator, trailing=None):

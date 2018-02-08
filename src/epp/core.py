@@ -73,11 +73,11 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
       The first gets 'effect' of the original, the second gets None.
     """
 
-    def __new__(cls, string, eff=None, start=0, end=None):
+    def __new__(cls, string, effect=None, start=0, end=None):
         if end is None:
             end = len(string)
         assert 0 <= start <= end <= len(string)
-        return super().__new__(cls, string, eff, start, end, start, start)
+        return super().__new__(cls, string, effect, start, end, start, start)
 
     def _replace(self, **kwargs):
         if "effect" not in kwargs:
@@ -208,7 +208,7 @@ def branch(funcs):
     Create a parser that will try given parsers in order and return the state
     of the first successful one.
     """
-    def res(state):
+    def branch_body(state):
         """ A tree of parsers. """
         for parser in funcs:
             try:
@@ -218,7 +218,7 @@ def branch(funcs):
             except ParsingFailure:
                 continue
         raise ParsingFailure("All parsers in a branching point have failed")
-    return res
+    return branch_body
 
 
 def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
@@ -242,7 +242,7 @@ def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
     caught in this manner.
     """
     exception_types = tuple(exception_types)
-    def res(state):
+    def catch_body(state):
         """ Try to catch an exception thrown by another parser. """
         try:
             if on_not_thrown is None:
@@ -258,7 +258,7 @@ def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
                     return on_thrown(state, exc)
                 return state
             raise exc
-    return res
+    return catch_body
 
 
 def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
@@ -290,7 +290,7 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
     wrap the iterator in list or some other *reusable* iterable (or call
     'reuse_iter' on it, if it comes from a function).
     """
-    def res(state):
+    def chain_body(state):
         """ A chain of parsers. """
         lookahead_chain = None
         start = state.left_start
@@ -348,7 +348,7 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
                         continue
                     break
         return prep_output(state)
-    return res
+    return chain_body
 
 
 def effect(eff):
@@ -365,10 +365,10 @@ def effect(eff):
 
 def fail():
     """ Return a parser that always fails. """
-    def res(state):
+    def fail_body(state):
         """ Fail immediately. """
         raise ParsingFailure("'fail' parser has been reached")
-    return res
+    return fail_body
 
 
 def identity():
@@ -381,20 +381,20 @@ def lazy(generator, *args, **kwargs):
     Make 'generator' lazy. It will only be called when it's time to actually
     parse a string. Useful for recursive parsers.
     """
-    def res(state):
+    def lazy_body(state):
         """ Lazily create a parser. """
         parser = generator(*args, **kwargs)
         return parser(state)
-    return res
+    return lazy_body
 
 
 def noconsume(parser):
     """ Return a version of 'parser' that doesn't consume input. """
-    def res(state):
+    def noconsume_body(state):
         """ Parse without consuming input. """
         output = parser(state)
         return output._replace(effect=output.effect, left_start=state.left_start)
-    return res
+    return noconsume_body
 
 
 def stop(discard=False):
@@ -408,14 +408,14 @@ def stop(discard=False):
     result in previous parsers' chunks concatenated. Their effect on 'left' and
     'value' will persist, though.
     """
-    def res(state):
+    def stop_body(state):
         """ Stop parsing. """
         if discard:
             state = state._replace(parsed_start=state.left_start,
                                    parsed_end=state.left_start)
             raise ParsingEnd(state)
         raise ParsingEnd(state)
-    return res
+    return stop_body
 
 
 def test(testfn):
@@ -425,12 +425,12 @@ def test(testfn):
 
     'parsed' window is truncated.
     """
-    def res(state):
+    def test_body(state):
         """ State testing function. """
         if testfn(state):
             return state._replace(parsed_start=state.left_start, parsed_end=state.left_start)
         raise ParsingFailure(f"Function {testfn} returned a falsey value on '{state.left[0:20]}'")
-    return res
+    return test_body
 
 
 #--------- helper things ---------#
