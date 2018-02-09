@@ -354,8 +354,17 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
 def effect(eff):
     """
     Register an effect in the chain. The argument should be a callable of two
-    arguments: the first is the value being built by effects, the second is the
-    remembered state of the parser chain.
+    arguments with signature
+    (value, state) -> value,
+    where 'value' is an arbitrary object being constructed by chain's effects,
+    and 'state' is the state of the parser chain at the moment of effect's
+    registration. Return 'value' can either be a new object, or a modified old
+    one.  Alternatively, you can supply the value being modified through a
+    nonlocal variable - like
+    > values = deque()
+    > eff = effect(lambda val, state: values.append(state.parsed)).
+    Note that this would tie your effect to the place of invokation and make it
+    not particularly reusable.
     """
     def effect_(state):
         """ Register an effect. """
@@ -577,7 +586,7 @@ def _shift(parsers, from_pos):
     return None
 
 
-def _subparse(state, parser, at):
+def _partial_parse(state, parser, at):
     """ Parse using only a portion of the input (namely, up to 'at'). """
     use, do_not = state.split(at)
     after = parser(use)
@@ -699,9 +708,9 @@ class _RestrictedParser():
         if self.lookahead is None:
             return self.parser(state)
         if self.lookahead is Lookahead.GREEDY:
-            return _subparse(state, self.parser, state.left_len - self.delta)
+            return _partial_parse(state, self.parser, state.left_len - self.delta)
         # is reluctant
-        return _subparse(state, self.parser, self.delta)
+        return _partial_parse(state, self.parser, self.delta)
 
     def overrestricted(self):
         """
