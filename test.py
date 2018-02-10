@@ -305,15 +305,13 @@ class TestCore(unittest.TestCase):
                 epp.stop(),
                 epp.literal("3")
             ],
-            combine=True)
+            combine=True, all_or_nothing=False)
         output = epp.parse(None, state, chain)
         self.assertIsNotNone(output)
         value, after = output
         self.assertIsNone(value)
         self.assertEqual(after.left, "3")
-        # note that 'combine' step of a chain is only performed if the chain
-        # was not interrupted
-        self.assertEqual(after.parsed, "2")
+        self.assertEqual(after.parsed, "12")
 
     def test_test_negative_1(self):
         """  Test 'test' parser generator, negative check #1. """
@@ -1212,6 +1210,112 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(after.parsed, "fofo")
         self.assertEqual(after.left, "fo")
 
+
+class TestEffects(unittest.TestCase):
+    """ Test effects system. """
+
+    def test_effects_in_depth_negative(self):
+        """
+        Test effects that are not in the top level of a chain, negative check.
+        """
+        string = "123"
+        state = epp.State(string)
+        sign = epp.maybe(
+            epp.chain(
+                [
+                    epp.literal("-"),
+                    epp.effect(lambda val, st: -1)
+                ]))
+        parser = epp.chain(
+            [
+                sign,
+                epp.integer(),
+                epp.effect(lambda val, st: int(st.parsed) * val)
+            ])
+        output = epp.parse(1, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, 123)
+
+    def test_effects_in_depth_positive(self):
+        """
+        Test effects that are not in the top level of a chain, positive check.
+        """
+        string = "-123"
+        state = epp.State(string)
+        sign = epp.maybe(
+            epp.chain(
+                [
+                    epp.literal("-"),
+                    epp.effect(lambda val, st: -1)
+                ]))
+        parser = epp.chain(
+            [
+                sign,
+                epp.integer(),
+                epp.effect(lambda val, st: int(st.parsed) * val)
+            ])
+        output = epp.parse(1, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, -123)
+
+    def test_lookahead(self):
+        """ Test effects interaction with lookahead. """
+        string = "aaaaa"
+        state = epp.State(string)
+        elem = epp.chain([epp.literal("a"), epp.effect(lambda val, st: val + 1)])
+        elem = epp.greedy(elem)
+        parser = epp.chain(
+            [
+                epp.many(elem),
+                epp.literal("a"),
+                epp.literal("a")
+            ])
+        output = epp.parse(0, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, 3)
+
+    def test_many(self):
+        """ Test 'many's interaction with effects. """
+        string = "11111111"
+        state = epp.State(string)
+        elem = epp.chain([epp.literal("1"), epp.effect(lambda val, st: val + 1)])
+        parser = epp.many(elem)
+        output = epp.parse(0, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, len(string))
+
+    def test_monoeffect(self):
+        """ Test an effect without a chain. """
+        string = "foobar"
+        state = epp.State(string)
+        parser = epp.effect(lambda val, st: 10)
+        output = epp.parse(0, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, 10)
+
+    def test_partial_application(self):
+        """ Test partial application of effects in chains that support it. """
+        string = "12345"
+        state = epp.State(string)
+        ef = epp.effect(lambda val, st: val + [st.parsed])
+        parser = epp.chain(
+            [
+                epp.literal("1"), ef,
+                epp.literal("2"), ef,
+                epp.stop(),
+                epp.literal("3"), ef,
+                epp.literal("4"), ef,
+                epp.literal("5"), ef
+            ], all_or_nothing=False)
+        output = epp.parse([], state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, ["1", "2"])
 
 if __name__ == "__main__":
     unittest.main()
