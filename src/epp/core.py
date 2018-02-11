@@ -548,7 +548,7 @@ def _partial_parse(state, parser, at):
     """ Parse using only a portion of the input (namely, up to 'at'). """
     use, do_not = state.split(at)
     after = parser(use)
-    after = after._replace(left_end=do_not.left_end)
+    after = after._replace(effect=after.effect, left_end=do_not.left_end)
     return after
 
 
