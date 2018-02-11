@@ -44,7 +44,8 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
     State objects are just named tuples, so they support a very convenient
     '_replace' method. !Note!: to avoid duplicating effects accidentally,
     '_replace' treats lack of 'effect' in its arguments as 'effect=None'. So if
-    you want to copy effect from another parser, you have to do it explicitly.
+    you want to copy an effect from another parser, you have to do it
+    explicitly.
 
     State objects' constructor takes the following arguments:
     1. string - the input.
@@ -72,6 +73,8 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
       gets the rest. Both have their 'parsed' windows reset to an empty string.
       The first gets 'effect' of the original, the second gets None.
     """
+
+    __slots__ = []
 
     def __new__(cls, string, effect=None, start=0, end=None):
         if end is None:
@@ -279,76 +282,19 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
 
     If 'all_or_nothing' is truthy (the default), a ParsingEnd exception thrown
     inside it will not cause the effects gathered so far to be registered and
-    part of the string parsed so far to be marked as 'parsed'. If the parameter
-    is falsey, partial application of effects and parsers is possible.
+    the part of the string parsed so far to be marked as 'parsed'. If the
+    parameter is falsey, partial application of effects and parsers is
+    possible. 'all_or_nothing' is suppressed if 'stop_on_failure' is truthy.
 
     A note on using iterators in chains: if supplied 'funcs' is an iterator,
     there is a possibility of 'funcs' being exausted on the first attempt to
     parse, with subsequent attempts silently succeeding because that's the
     default behaviour for empty 'funcs'. If you want to run your chain several
     times - be it because of lookahead or for different reasons - make sure to
-    wrap the iterator in list or some other *reusable* iterable (or call
+    wrap the iterator in a list or some other reusable iterable (or call
     'reuse_iter' on it, if it comes from a function).
     """
-    def chain_body(state):
-        """ A chain of parsers. """
-        lookahead_chain = None
-        start = state.left_start
-        effect_points = _CachedAppender()
-        def prep_output(s):
-            """
-            Combine effects and (if 'combine' is truthy) 'parsed' windows.
-            """
-            if combine:
-                s = s._replace(parsed_start=start)
-            return s._replace(effect=_chain_effects(effect_points))
-        def handle_stop(end):
-            """ Handle ParsingEnd exception. """
-            if all_or_nothing:
-                raise end
-            if end.state.effect is not None:
-                effect_points.append(end.state)
-            effchain = _chain_effects(effect_points)
-            if combine:
-                end.state = end.state._replace(effect=effchain, parsed_start=start)
-            else:
-                end.state = end.state._replace(effect=effchain)
-            raise end
-        for parser in funcs:
-            if lookahead_chain is None and has_lookahead(parser):
-                lookahead_chain = _CachedAppender()
-            if lookahead_chain is not None or has_lookahead(parser):
-                parser = _restrict(parser)
-                lookahead_chain.append(parser)
-            try:
-                state = parser(state)
-                if state.effect is not None:
-                    effect_points.append(state)
-            except ParsingEnd as end:
-                handle_stop(end)
-            except ParsingFailure as failure:
-                if stop_on_failure:
-                    return prep_output(state)
-                if lookahead_chain is None:
-                    raise failure
-                pos = len(lookahead_chain) - 1
-                while True:
-                    try_shift = _shift(lookahead_chain, pos)
-                    if try_shift is None:
-                        raise ParsingFailure(
-                            "Failed to find a combination of inputs that allows  "
-                            "successful parsing")
-                    _reset_chain(lookahead_chain, try_shift)
-                    try:
-                        state, failed = _try_chain(lookahead_chain, try_shift, effect_points)
-                    except ParsingEnd as end:
-                        handle_stop(end)
-                    if state is None:
-                        pos = failed
-                        continue
-                    break
-        return prep_output(state)
-    return chain_body
+    return _Chain(funcs, combine, stop_on_failure, all_or_nothing)
 
 
 def effect(eff):
@@ -438,6 +384,18 @@ def test(testfn):
 
 
 #--------- helper things ---------#
+
+
+def copy_lookahead(from_parser, to):
+    """
+    Copy lookahead mode from 'from_parser' to 'to' and return the modified
+    parser.
+    """
+    try:
+        to.lookahead = from_parser.lookahead
+    except AttributeError:
+        pass
+    return to
 
 
 def get_lookahead(parser):
@@ -548,14 +506,14 @@ def _reset_chain(parsers, start_at):
         _reset(parsers[i])
 
 
-def _restrict(parser):
+def _restrict(parser, state):
     """
     Return a restricted version of a parser.
     A no-op when used on a parser that performs no lookahead.
     """
     if get_lookahead(parser) is None:
         return parser
-    return _RestrictedParser(parser)
+    return _RestrictedParser(parser, state)
 
 
 def _restrict_more(parser):
@@ -607,6 +565,7 @@ def _try_chain(parsers, from_pos, effect_points):
     i = from_pos
     for i in range(from_pos, len(parsers)):
         try:
+            parsers[i].state_before = state
             state = parsers[i](state)
             if state.effect is not None:
                 new_effect_points.append(state)
@@ -694,14 +653,109 @@ class _CachedAppender():
         self.changed = False
 
 
+class _Chain():
+    """
+    A chain of parsers.
+    """
+
+    def __init__(self, funcs, combine, stop_on_failure, all_or_nothing):
+        self.parsers = funcs
+        self.combine = combine
+        self.stop_on_failure = stop_on_failure
+        self.all_or_nothing = all_or_nothing
+        self.effect_points = None
+        self.first_state = None
+        self.lookahead_chain = None
+
+    def __call__(self, state):
+        self.reset(state)
+        return self.parse()
+
+    def prep_output_state(self, state, early):
+        """ Prepare output state: combine 'parsed's and effects. """
+        if early and self.all_or_nothing and not self.stop_on_failure:
+            return self.first_state
+        if self.combine:
+            state = state._replace(parsed_start=self.first_state.left_start)
+        state = state._replace(effect=_chain_effects(self.effect_points))
+        return state
+
+    def prep_end_exception(self, end, state):
+        """
+        Prepare ParsingEnd exception: attach a prepared output state to it.
+        """
+        end.state = self.prep_output_state(state, True)
+        return end
+
+    def reset(self, state):
+        """ Reset the state of the chain. """
+        self.effect_points = _CachedAppender()
+        self.first_state = state
+        self.lookahead_chain = None
+
+    def start_lookahead(self, state, parsers):
+        """ Start backtracking. """
+        start_from = len(self.lookahead_chain) - 1
+        while True:
+            pos = _shift(self.lookahead_chain, start_from)
+            if pos is None:
+                raise ParsingFailure("No combination of inputs allows successful parsing")
+            _reset_chain(self.lookahead_chain, start_from)
+            after, failed = _try_chain(self.lookahead_chain, pos, self.effect_points)
+            if after is None:
+                start_from = failed
+                continue
+            state = after
+            try:
+                for parser in parsers:
+                    state = self.parse_one(state, parser)
+                return self.prep_output_state(state, False)
+            except ParsingEnd as end:
+                raise self.prep_end_exception(end, state)
+            except ParsingFailure:
+                if self.stop_on_failure:
+                    return self.prep_output_state(state, True)
+                start_from = len(self.lookahead_chain) - 1
+                continue
+
+    def parse(self):
+        """ Try to parse the initial state. """
+        try:
+            parsers = iter(self.parsers)
+            state = self.first_state
+            for parser in parsers:
+                state = self.parse_one(state, parser)
+            return self.prep_output_state(state, False)
+        except ParsingEnd as end:
+            raise self.prep_end_exception(end, state)
+        except ParsingFailure as failure:
+            if self.stop_on_failure:
+                return self.prep_output_state(state, True)
+            if self.lookahead_chain is None:
+                raise failure
+            return self.start_lookahead(state, parsers)
+
+    def parse_one(self, state, parser):
+        """ Parse using a single parser. Return the resulting state. """
+        if self.lookahead_chain is None and has_lookahead(parser):
+            self.lookahead_chain = _CachedAppender()
+        if self.lookahead_chain is not None:
+            parser = _restrict(parser, state)
+            self.lookahead_chain.append(parser)
+        state = parser(state)
+        if state.effect is not None:
+            self.effect_points.append(state)
+        return state
+
+
 class _RestrictedParser():
     """ A parser that only operates on a restricted portion of input. """
 
-    def __init__(self, parser):
+    def __init__(self, parser, state):
         self.parser = parser
         self.lookahead = get_lookahead(parser)
         self.delta = 0
-        self.state_before = None
+        self.state_before = state
 
     def __call__(self, state):
         self.state_before = state
