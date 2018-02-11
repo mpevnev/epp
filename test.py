@@ -1156,7 +1156,8 @@ class TestLookahead(unittest.TestCase):
         parser = epp.chain(
             [epp.reluctant(epp.many(epp.literal("a"))),
              epp.greedy(epp.many(epp.literal("b"), min_hits=1)),
-             epp.everything()], False)
+             epp.everything()], 
+            combine=False)
         output = epp.parse(None, state, parser)
         self.assertIsNotNone(output)
         value, after = output
@@ -1268,7 +1269,7 @@ class TestEffects(unittest.TestCase):
         elem = epp.greedy(elem)
         parser = epp.chain(
             [
-                epp.many(elem),
+                epp.greedy(epp.many(elem)),
                 epp.literal("a"),
                 epp.literal("a")
             ])

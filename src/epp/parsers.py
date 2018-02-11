@@ -328,7 +328,8 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
         must = None
     if max_hits > 0:
         might = core.chain(core.reuse_iter(itools.repeat, parser, max_hits - min_hits),
-                           combine, True)
+                           combine=combine,
+                           stop_on_failure=True)
     else:
         might = core.chain(itools.repeat(parser), combine, True)
     if must is None:
