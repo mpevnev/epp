@@ -313,6 +313,46 @@ class TestCore(unittest.TestCase):
         self.assertEqual(after.left, "3")
         self.assertEqual(after.parsed, "12")
 
+    def test_subparse_negative_1(self):
+        """ Test 'subparse' parser generator, negative check #1. """
+        string = "foobar"
+        state = epp.State(string)
+        subparser = epp.literal("baz")
+        def absorber(main_val, main_st, val, st):
+            """ Absorber. """
+            return main_val + 10
+        parser = epp.chain(
+            [
+                epp.literal("foo"),
+                epp.subparse(0, subparser, absorber)
+            ])
+        output = epp.parse(0, state, parser)
+        self.assertIsNone(output)
+
+    def test_subparse_positive_1(self):
+        """ Test 'subparse' parser generator, positive check #1. """
+        string = "a111"
+        state = epp.State(string)
+        subparser = epp.chain(
+            [
+                epp.integer(),
+                epp.effect(lambda val, st: int(st.parsed))
+            ])
+        def absorber(main_val, main_st, val, st):
+            """ Absorber. """
+            main_val[main_st.parsed] = val
+            return main_val
+        parser = epp.chain(
+            [
+                epp.literal("a"),
+                epp.subparse(0, subparser, absorber)
+            ])
+        output = epp.parse({}, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, {"a": 111})
+
+
     def test_test_negative_1(self):
         """  Test 'test' parser generator, negative check #1. """
         test = lambda state: int(state.parsed) > 10

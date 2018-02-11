@@ -368,6 +368,30 @@ def stop(discard=False):
     return stop_body
 
 
+def subparse(seed, parser, absorber):
+    """
+    Create a parser that will run 'parser' (via 'parse') on the current input
+    and given seed value, and then register an effect incorporating subchain's
+    output value into the main chain using 'absorber', which should be a
+    callable:
+    (main_chain_value, main_chain_state, parser_value, parser_state) -> value
+
+    Parser's output state will replace chain's state if the operation is
+    succesful.
+
+    If parser fails, so does 'subparse'.
+    """
+    def absorb_inner(state):
+        """ Absorb results of another parser into the chain. """
+        output = parse(seed, state, parser)
+        if output is None:
+            raise ParsingFailure("Subparsing failed")
+        value, after = output
+        after = after._replace(effect=lambda val, st: absorber(val, state, value, after))
+        return after
+    return absorb_inner
+
+
 def test(testfn):
     """
     Return a parser that succeeds consuming no input if testfn(state) returns a
