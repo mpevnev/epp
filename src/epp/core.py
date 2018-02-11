@@ -109,8 +109,8 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
         """
         Split the State in two. The first one keeps a portion of input up to
         'at'th character (exclusive), the second one gets the rest. Both have
-        'parsed' window reset to an empty string, and keep the value of the
-        original State.
+        'parsed' window reset to an empty string. First one gets the effect of
+        the original, the second one gets None.
         """
         split_point = self.left_start + at
         first = self._replace(effect=self.effect,
