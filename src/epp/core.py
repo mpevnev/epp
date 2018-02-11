@@ -562,7 +562,6 @@ def _try_chain(parsers, from_pos, effect_points):
     state = parsers[from_pos].state_before
     new_effect_points = deque()
     drop_effects_after = effect_points.find(lambda point: point[1] >= from_pos)
-    print(f"*** --- drop is {drop_effects_after}")
     i = from_pos
     for i in range(from_pos, len(parsers)):
         try:
