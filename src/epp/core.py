@@ -477,7 +477,7 @@ def _chain_effects(effect_points):
     """ Chain effects saved in 'states' together into a single effect. """
     def chained_effects(value, state):
         """ A chain of effects. """
-        for s in effect_points:
+        for (s, _) in effect_points:
             value = s.effect(value, s)
         return value
     return chained_effects
@@ -561,23 +561,24 @@ def _try_chain(parsers, from_pos, effect_points):
     """
     state = parsers[from_pos].state_before
     new_effect_points = deque()
-    drop_effects_after = effect_points.find(lambda point: point is state)
+    drop_effects_after = effect_points.find(lambda point: point[1] >= from_pos)
+    print(f"*** --- drop is {drop_effects_after}")
     i = from_pos
     for i in range(from_pos, len(parsers)):
         try:
             parsers[i].state_before = state
             state = parsers[i](state)
             if state.effect is not None:
-                new_effect_points.append(state)
+                new_effect_points.append((state, i))
         except ParsingFailure:
             return (None, i)
         except ParsingEnd as end:
             if drop_effects_after is not None:
-                effect_points.drop(len(effect_points) - (drop_effects_after + 1))
+                effect_points.drop(len(effect_points) - drop_effects_after)
             effect_points.extend(new_effect_points)
             raise end
     if drop_effects_after is not None:
-        effect_points.drop(len(effect_points) - (drop_effects_after + 1))
+        effect_points.drop(len(effect_points) - drop_effects_after)
     effect_points.extend(new_effect_points)
     return state, i
 
@@ -735,14 +736,16 @@ class _Chain():
 
     def parse_one(self, state, parser):
         """ Parse using a single parser. Return the resulting state. """
+        pos = None
         if self.lookahead_chain is None and has_lookahead(parser):
             self.lookahead_chain = _CachedAppender()
         if self.lookahead_chain is not None:
             parser = _restrict(parser, state)
+            pos = len(self.lookahead_chain)
             self.lookahead_chain.append(parser)
         after = parser(state)
         if after.effect is not None:
-            self.effect_points.append(after)
+            self.effect_points.append((after, pos))
         return after
 
 

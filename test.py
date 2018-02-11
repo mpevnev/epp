@@ -1261,12 +1261,11 @@ class TestEffects(unittest.TestCase):
         value, _ = output
         self.assertEqual(value, -123)
 
-    def test_lookahead(self):
-        """ Test effects interaction with lookahead. """
+    def test_lookahead_1(self):
+        """ Test effects interaction with lookahead, check #1. """
         string = "aaaaa"
         state = epp.State(string)
         elem = epp.chain([epp.literal("a"), epp.effect(lambda val, st: val + 1)])
-        elem = epp.greedy(elem)
         parser = epp.chain(
             [
                 epp.greedy(epp.many(elem)),
@@ -1277,6 +1276,32 @@ class TestEffects(unittest.TestCase):
         self.assertIsNotNone(output)
         value, _ = output
         self.assertEqual(value, 3)
+
+    def test_lookahead_2(self):
+        """
+        Test effects interaction with lookahead, check #2.
+
+        This test checks if dropping effects from the chain on a lookahead
+        retry works correctly.
+        """
+        string = "abaaa"
+        state = epp.State(string)
+        first = epp.effect(lambda val, st: val + 1)
+        second = epp.effect(lambda val, st: val + 10)
+        third = epp.effect(lambda val, st: val + 100)
+        parser = epp.chain(
+            [
+                epp.greedy(epp.everything()),
+                first,
+                second,
+                third,
+                epp.literal("b")
+            ])
+        output = epp.parse(0, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, 111)
+
 
     def test_many(self):
         """ Test 'many's interaction with effects. """
