@@ -693,14 +693,14 @@ class _Chain():
         self.first_state = state
         self.lookahead_chain = None
 
-    def start_lookahead(self, state, parsers):
-        """ Start backtracking. """
+    def start_backtracking(self, state, parsers):
+        """ Start backtracking, then continue with normal parsing. """
         start_from = len(self.lookahead_chain) - 1
         while True:
             pos = _shift(self.lookahead_chain, start_from)
             if pos is None:
                 raise ParsingFailure("No combination of inputs allows successful parsing")
-            _reset_chain(self.lookahead_chain, start_from)
+            _reset_chain(self.lookahead_chain, pos)
             after, failed = _try_chain(self.lookahead_chain, pos, self.effect_points)
             if after is None:
                 start_from = failed
@@ -713,8 +713,6 @@ class _Chain():
             except ParsingEnd as end:
                 raise self.prep_end_exception(end, state)
             except ParsingFailure:
-                if self.stop_on_failure:
-                    return self.prep_output_state(state, True)
                 start_from = len(self.lookahead_chain) - 1
                 continue
 
@@ -733,7 +731,7 @@ class _Chain():
                 return self.prep_output_state(state, True)
             if self.lookahead_chain is None:
                 raise failure
-            return self.start_lookahead(state, parsers)
+            return self.start_backtracking(state, parsers)
 
     def parse_one(self, state, parser):
         """ Parse using a single parser. Return the resulting state. """
@@ -742,10 +740,10 @@ class _Chain():
         if self.lookahead_chain is not None:
             parser = _restrict(parser, state)
             self.lookahead_chain.append(parser)
-        state = parser(state)
-        if state.effect is not None:
-            self.effect_points.append(state)
-        return state
+        after = parser(state)
+        if after.effect is not None:
+            self.effect_points.append(after)
+        return after
 
 
 class _RestrictedParser():
