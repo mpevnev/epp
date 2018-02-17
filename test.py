@@ -1125,6 +1125,18 @@ class TestParsers(unittest.TestCase):
         self.assertEqual(after.parsed, string)
         self.assertEqual(after.left, "")
 
+    def test_weave_positive_3(self):
+        """ Test 'weave' parser generator, positive check #3. """
+        string = "1"
+        state = epp.State(string)
+        parser = epp.weave([epp.literal("1")], epp.literal("irrelevant"))
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertIsNone(value)
+        self.assertEqual(after.parsed, string)
+        self.assertEqual(after.left, "")
+
 
 class TestLookahead(unittest.TestCase):
     """ Test lookahead mechanism. """
