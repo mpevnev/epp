@@ -10,7 +10,7 @@ def long_description():
 
 setup(
     name="epparsers",
-    version="0.1",
+    version="0.1.1",
     package_dir={"": "src"},
     packages=find_packages("src"),
 
