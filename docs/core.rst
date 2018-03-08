@@ -98,7 +98,7 @@ Note that ``ParsingFailure`` and ``ParsingEnd`` cannot be caught in this manner.
 
 The signature: ::
 
-        chain(parsers, combine=True, stop_on_failure=False, all_or_nothing=True)
+        chain(parsers, combine=True, stop_on_failure=False, all_or_nothing=True, save_iterator=True)
 This function returns a parser that will run parsers in the ``parsers`` iterable
 feeding output of one as input to the next. For complete breakdown of
 parameters meaning, see the docstring on this function. 

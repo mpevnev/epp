@@ -98,6 +98,36 @@ whitespace, including newlines if ``accept_newlines`` is true.
 Aggregates of single-character parsers
 ======================================
 
+``alnum_word``
+--------------
+
+The signature: ::
+
+        alnum_word(ascii_only=False)
+This function returns a parser that matches a non-empty sequence of
+alphanumeric characters. If ``ascii_only`` is true, the parser will not accept
+characters outside ASCII alphanumeric range (``[a-zA-Z0-9]``, if you will).
+
+``alpha_word``
+--------------
+
+The signature: ::
+
+        alpha_word(ascii_only=False)
+This function returns a parser that matches a non-empty sequence of
+alphabetic characters. If ``ascii_only`` is true, the parser will not accept
+characters outside ``[a-zA-Z]``.
+
+
+``any_word``
+------------
+
+The signature: ::
+
+        any_word()
+This function returns a parser that matches a non-empty sequence of
+non-whitespace characters.
+
 ``hex_int``
 -----------
 
@@ -136,6 +166,17 @@ whitespace, optionally matching newlines as well.
 
 Various
 =======
+
+``balanced``
+------------
+
+The signature: ::
+
+        balanced(opening_string, closing_string, include_outer_pair=False)
+This function returns a parser that matches everything between a balanced pair
+of an opening and closing strings. If ``include_outer_pair`` is true, the
+parsed string will include outer opening and closing strings, otherwise they
+will be excluded.
 
 ``end_of_input``
 ----------------
