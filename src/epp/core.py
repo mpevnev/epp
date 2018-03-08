@@ -207,14 +207,27 @@ def parse(seed, state_or_string, parser, verbose=False):
 #--------- core parsers generators ---------#
 
 
-def branch(funcs):
+def branch(funcs, save_iterator=True):
     """
     Create a parser that will try given parsers in order and return the state
     of the first successful one.
+
+    If 'save_iterator' is truthy (the default), the parsers from the given
+    iterator will be saved, allowing the resulting parser to be run several
+    times without the danger of the 'funcs' being consumed on the first run.
+    However, this increases memory consumption. If you're absolutely sure that
+    your branch will be run only once, or if you already use a reusable
+    iterable such as a list or a deque, you can pass False as 'save_iterator'
+    to avoid memory overhead.
     """
+    saved = deque()
+    funcs = iter(funcs)
     def branch_body(state):
         """ A tree of parsers. """
-        for parser in funcs:
+        saved_len = len(saved)
+        for i, parser in enumerate(it.chain(saved, funcs)):
+            if i >= saved_len and save_iterator:
+                saved.append(parser)
             try:
                 return parser(state)
             except ParsingEnd as end:
