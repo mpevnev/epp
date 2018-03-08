@@ -7,6 +7,7 @@ ones in the 'core' module.
 
 """
 
+from collections import deque
 import itertools as itools
 
 import epp.core as core
@@ -477,22 +478,29 @@ def take(num, fail_on_fewer=True):
     return take_body
 
 
-def weave(parsers, separator, trailing=None):
+def weave(parsers, separator, trailing=None, stop_on_failure=False):
     """
     Return a chain where each parser in 'parsers' is separated by 'separator'
     from others.
+
     If 'trailing' is not None, append it to the resulting chain.
+
+    'stop_on_failure' will be sent through to the underlying 'chain' generator.
     """
+    parsers = iter(parsers)
+    saved = deque()
     def iterator():
         """ Return the iterable that will go into the chain. """
-        it = iter(parsers)
-        for i, p in enumerate(it):
+        saved_len = len(saved)
+        for i, p in enumerate(itools.chain(saved, parsers)):
             if i != 0:
                 yield separator
+            if i >= saved_len:
+                saved.append(p)
             yield p
         if trailing is not None:
             yield trailing
-    return core.chain(core.reuse_iter(iterator))
+    return core.chain(core.reuse_iter(iterator), stop_on_failure=stop_on_failure)
 
 
 #--------- helper things ---------#
