@@ -247,6 +247,51 @@ def whitespace(min_num=1, accept_newlines=False):
 #--------- various ---------#
 
 
+def balanced(opening, closing, include_outer_pair=False):
+    """
+    Return a parser that will parse everything between an 'opening' string and
+    a 'closing' string, where the number of opening and closing strings in the
+    parsed part is balanced.
+
+    Fail if the input doesn't start with 'opening' or if there are not enough
+    'closing' substrings in the input to balance the opening ones.
+
+    If 'include_outer_pair' is truthy, include the first opening and the last
+    closing strings in the 'parsed', otherwise exclude them, leaving just the
+    part between them.
+    """
+    def balanced_body(state):
+        """ Match input between balanced pair of strings. """
+        open_len = len(opening)
+        closing_len = len(closing)
+        if state.string[state.left_start:state.left_start + open_len] != opening:
+            raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with '{opening}'")
+        pos = state.left_start + open_len
+        balance = 1
+        while pos < state.left_end and balance != 0:
+            cur_bit = state.string[pos:state.left_end]
+            if cur_bit.startswith(closing):
+                balance -= 1
+                pos += closing_len
+                continue
+            if cur_bit.startswith(opening):
+                balance += 1
+                pos += open_len
+                continue
+            pos += 1
+        if balance != 0:
+            raise core.ParsingFailure(f"Failed to find a balanced pair of '{opening}' "
+                                      f"and '{closing}'")
+        if include_outer_pair:
+            return state._replace(left_start=pos,
+                                  parsed_start=state.left_start,
+                                  parsed_end=pos)
+        return state._replace(left_start=pos,
+                              parsed_start=state.left_start + open_len,
+                              parsed_end=pos - closing_len)
+    return balanced_body
+
+
 def end_of_input():
     """ Return a parser that matches only if there is no input left. """
     def end_of_input_body(state):

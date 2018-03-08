@@ -843,6 +843,56 @@ class TestParsers(unittest.TestCase):
 
     #--------- various ---------#
 
+
+    def test_balanced_negative_1(self):
+        """ Test 'balanced' parser generator, negative check #1. """
+        string = "b"
+        state = epp.State(string)
+        parser = epp.balanced("(", ")")
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_balanced_negative_2(self):
+        """ Test 'balanced' parser generator, negative check #2. """
+        string = "(()"
+        state = epp.State(string)
+        parser = epp.balanced("(", ")")
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_balanced_positive_1(self):
+        """ Test 'balanced' parser generator, positive check #1. """
+        string = "(1()22)3"
+        state = epp.State(string)
+        parser = epp.balanced("(", ")")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, "3")
+        self.assertEqual(after.parsed, "1()22")
+
+    def test_balanced_positive_2(self):
+        """ Test 'balanced' parser generator, positive check #2. """
+        string = "(1()22)3"
+        state = epp.State(string)
+        parser = epp.balanced("(", ")", True)
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, "3")
+        self.assertEqual(after.parsed, "(1()22)")
+
+    def test_balanced_positive_3(self):
+        """ Test 'balanced' parser generator, positive check #3. """
+        string = "()"
+        state = epp.State(string)
+        parser = epp.balanced("(", ")")
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, "")
+        self.assertEqual(after.parsed, "")
+
     def test_end_of_input_negative_1(self):
         """ Test 'end_of_input' parser generator, negative check #1. """
         string = "a"
