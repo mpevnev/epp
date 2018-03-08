@@ -482,10 +482,6 @@ def weave(parsers, separator, trailing=None):
     Return a chain where each parser in 'parsers' is separated by 'separator'
     from others.
     If 'trailing' is not None, append it to the resulting chain.
-
-    The same note about using iterators as on 'chain' applies here as well.
-    Wrap them in a list or 'reuse_iter' if the chain is going to be tried
-    several times.
     """
     def iterator():
         """ Return the iterable that will go into the chain. """
