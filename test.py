@@ -693,6 +693,80 @@ class TestParsers(unittest.TestCase):
 
     #--------- aggregates and variations of the above ---------#
 
+
+    def test_alnum_word_negative_1(self):
+        """ Test 'alnum_word' parser generator, negative check #1. """
+        string = "!"
+        state = epp.State(string)
+        parser = epp.alnum_word()
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_alnum_word_negative_2(self):
+        """ Test 'alnum_word' parser generator, negative check #2. """
+        string = "\U000000DF" # Eszet
+        state = epp.State(string)
+        parser = epp.alnum_word(True)
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_alnum_word_positive_1(self):
+        """ Test 'alnum_word' parser generator, positive check #1. """
+        string = "1a!"
+        state = epp.State(string)
+        parser = epp.alnum_word()
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.parsed, "1a")
+        self.assertEqual(after.left, "!")
+
+    def test_alpha_word_negative_1(self):
+        """ Test 'alpha_word' parser generator, negative check #1. """
+        string = "!"
+        state = epp.State(string)
+        parser = epp.alpha_word()
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_alpha_word_negative_2(self):
+        """ Test 'alpha_word' parser generator, negative check #2. """
+        string = "\U000000DF" # Eszet
+        state = epp.State(string)
+        parser = epp.alpha_word(True)
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_alpha_word_positive_1(self):
+        """ Test 'alpha_word' parser generator, positive check #1. """
+        string = "a1"
+        state = epp.State(string)
+        parser = epp.alpha_word()
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, "1")
+        self.assertEqual(after.parsed, "a")
+
+    def test_any_word_negative_1(self):
+        """ Test 'any_word' parser generator, negative check #1. """
+        string = " 2"
+        state = epp.State(string)
+        parser = epp.any_word()
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_any_word_positive_1(self):
+        """ Test 'any_word' parser generator, positive check #1. """
+        string = "a1, !"
+        state = epp.State(string)
+        parser = epp.any_word()
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, " !")
+        self.assertEqual(after.parsed, "a1,")
+
     def test_hex_int_negative_1(self):
         """ Test 'hex_int' parser generator, negative check #1. """
         string = "ttt"

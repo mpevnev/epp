@@ -190,6 +190,36 @@ def white_char(accept_newlines=False):
 #--------- aggregates and variations of the above ---------#
 
 
+def alnum_word(ascii_only=False):
+    """
+    Return a parser that will match a non-empty sequence of alphanumeric
+    character.
+
+    If 'ascii_only' is truthy, match only ASCII characters, otherwise match
+    everything that is considered an alphanumeric character in Unicode.
+    """
+    return many(alnum(ascii_only), 1)
+
+
+def alpha_word(ascii_only=False):
+    """
+    Return a parser that will match a non-empty sequence of alphabetic
+    characters.
+
+    If 'ascii_only' is truthy, match only ASCII characters, otherwise match
+    everything that is considered an alphabetic character in Unicode.
+    """
+    return many(alpha(ascii_only), 1)
+
+
+def any_word():
+    """
+    Return a parser that will match a non-empty sequence of non-whitespace
+    characters.
+    """
+    return many(nonwhite_char(), 1)
+
+
 def hex_int(must_have_prefix=False):
     """
     Return a parser that will match integers in base 16 (with or without '0x'
