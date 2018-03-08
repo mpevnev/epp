@@ -16,6 +16,7 @@ successfully.
 
 from collections import deque, namedtuple
 import enum
+import itertools as it
 
 
 #--------- base things ---------#
@@ -264,7 +265,8 @@ def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
     return catch_body
 
 
-def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
+def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True,
+          save_iterator=True):
     """
     Create a parser that chains a given iterable of parsers together, using
     output of one parser as input for another.
@@ -286,15 +288,14 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True):
     parameter is falsey, partial application of effects and parsers is
     possible. 'all_or_nothing' is suppressed if 'stop_on_failure' is truthy.
 
-    A note on using iterators in chains: if supplied 'funcs' is an iterator,
-    there is a possibility of 'funcs' being exausted on the first attempt to
-    parse, with subsequent attempts silently succeeding because that's the
-    default behaviour for empty 'funcs'. If you want to run your chain several
-    times - be it because of lookahead or for different reasons - make sure to
-    wrap the iterator in a list or some other reusable iterable (or call
-    'reuse_iter' on it, if it comes from a function).
+    If 'save_iterator' is truthy (the default), the elements of the supplied
+    iterator will be saved for future reuse. This avoids a problem of the
+    iterator being exausted after the first parser run, but leads to higher
+    memory consumption. Disable it only if you're sure that the chain will only
+    be used once, or if you've wrapped the iterator into some reusable
+    iterable, like a list or a deque, or if you've used 'reuse_iter'.
     """
-    return _Chain(funcs, combine, stop_on_failure, all_or_nothing)
+    return _Chain(funcs, combine, stop_on_failure, all_or_nothing, save_iterator)
 
 
 def effect(eff):
@@ -682,11 +683,16 @@ class _Chain():
     A chain of parsers.
     """
 
-    def __init__(self, funcs, combine, stop_on_failure, all_or_nothing):
-        self.parsers = funcs
+    def __init__(self, funcs, combine, stop_on_failure, all_or_nothing, save_iterator):
         self.combine = combine
         self.stop_on_failure = stop_on_failure
         self.all_or_nothing = all_or_nothing
+        if save_iterator:
+            self.parsers = iter(funcs)
+            self.saved_parsers = deque()
+        else:
+            self.parsers = funcs
+            self.saved_parsers = None
         self.effect_points = None
         self.first_state = None
         self.lookahead_chain = None
@@ -743,9 +749,17 @@ class _Chain():
     def parse(self):
         """ Try to parse the initial state. """
         try:
-            parsers = iter(self.parsers)
+            if self.saved_parsers is not None:
+                saved = self.saved_parsers.copy()
+                num_saved = len(saved)
+                parsers = it.chain(saved, self.parsers)
+            else:
+                num_saved = -1
+                parsers = self.parsers
             state = self.first_state
-            for parser in parsers:
+            for i, parser in enumerate(parsers):
+                if num_saved >= 0 and i >= num_saved:
+                    self.saved_parsers.append(parser)
                 state = self.parse_one(state, parser)
             return self.prep_output_state(state, False)
         except ParsingEnd as end:

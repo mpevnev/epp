@@ -1074,7 +1074,7 @@ class TestParsers(unittest.TestCase):
         """ Test 'weave' parser generator, negative check #1. """
         string = "12131"
         state = epp.State(string)
-        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+        parser = epp.weave(it.repeat(epp.literal("1"), 3),
                            epp.literal("2"))
         output = epp.parse(None, state, parser)
         self.assertIsNone(output)
@@ -1083,7 +1083,7 @@ class TestParsers(unittest.TestCase):
         """ Test 'weave' parser generator, negative check #2. """
         string = "22121"
         state = epp.State(string)
-        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+        parser = epp.weave(it.repeat(epp.literal("1"), 3),
                            epp.literal("2"))
         output = epp.parse(None, state, parser)
         self.assertIsNone(output)
@@ -1092,7 +1092,7 @@ class TestParsers(unittest.TestCase):
         """ Test 'weave' parser generator, negative check #3. """
         string = "121215"
         state = epp.State(string)
-        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+        parser = epp.weave(it.repeat(epp.literal("1"), 3),
                            epp.literal("2"),
                            trailing=epp.literal("3"))
         output = epp.parse(None, state, parser)
@@ -1102,7 +1102,7 @@ class TestParsers(unittest.TestCase):
         """ Test 'weave' parser generator, positive check #1. """
         string = "12121"
         state = epp.State(string)
-        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+        parser = epp.weave(it.repeat(epp.literal("1"), 3),
                 epp.literal("2"))
         output = epp.parse(None, state, parser)
         self.assertIsNotNone(output)
@@ -1115,7 +1115,7 @@ class TestParsers(unittest.TestCase):
         """ Test 'weave' parser generator, positive check #2. """
         string = "121213"
         state = epp.State(string)
-        parser = epp.weave(epp.reuse_iter(it.repeat, epp.literal("1"), 3),
+        parser = epp.weave(it.repeat(epp.literal("1"), 3),
                 epp.literal("2"),
                 trailing=epp.literal("3"))
         output = epp.parse(None, state, parser)
