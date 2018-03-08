@@ -258,7 +258,8 @@ are available. Otherwise it'll consume what it can.
 
 The signature: ::
 
-        weave(parsers_iterable, separator, trailing=None)
+        weave(parsers_iterable, separator, trailing=None, stop_on_failure=False)
 This function returns a parser that will chain parsers from the iterable,
 interspersed by ``separator`` and (unless ``trailing`` is None) terminated by
-``trailing``.
+``trailing``. ``stop_on_failure`` will be sent through to the underlying
+``chain``.
