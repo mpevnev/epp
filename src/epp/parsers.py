@@ -297,6 +297,10 @@ def maybe(parser):
         except core.ParsingFailure:
             return state._replace(parsed_start=state.left_start,
                                   parsed_end=state.left_start)
+    try:
+        maybe_body.lookahead = parser.lookahead
+    except AttributeError:
+        pass
     return maybe_body
 
 
