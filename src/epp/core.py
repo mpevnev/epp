@@ -221,7 +221,8 @@ def branch(funcs, save_iterator=True):
     to avoid memory overhead.
     """
     saved = deque()
-    funcs = iter(funcs)
+    if save_iterator:
+        funcs = iter(funcs)
     def branch_body(state):
         """ A tree of parsers. """
         saved_len = len(saved)
