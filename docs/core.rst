@@ -43,8 +43,12 @@ returns a new State object with ``num`` characters consumed (i.e. moved from
 ------------------
 
 An exception of this type should be raised if a parser can't parse its input.
-The only argument its constructor accepts is the description of what went wrong
-during parsing.
+The constructor has the following signature: ::
+
+        __init__(self, failed_state, text, code=0)
+Here ``failed_state`` should be the state that caused the parser to fail, 
+``text`` should be an error message and ``code`` should represent the exact
+reason for failure (for codes for built-in parsers see file ``errors.py``)
 
 ``ParsingEnd``
 --------------
@@ -153,6 +157,19 @@ The signature: ::
 This function returns a parser that, when run, will call ``generator`` with
 ``args`` and ``kwargs`` as its argumentss and then will run its return value as a 
 parser. This is primarily intended to be used in recursive parsers.
+
+
+``modify_error``
+----------------
+
+The signature: ::
+
+        modify_error(parser, error_transformer)
+This function wraps ``parser`` into a new parser that will transform any
+``ParsingFailure`` exception thrown inside the underlying parser. 
+``error_transformer`` should be a callable with a single argument, which will
+be the raised exception, and should return either a modified exception or a new
+one. Useful if you wish to change the error message to a more descriptive one.
 
 ``noconsume``
 -------------
