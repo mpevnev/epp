@@ -11,6 +11,7 @@ from collections import deque
 import itertools as itools
 
 import epp.core as core
+import epp.errors as error
 
 
 #--------- single-character parsers ---------#
@@ -28,14 +29,23 @@ def alnum(ascii_only=False):
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected an alphanumeric character, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected an alphanumeric character, got the end of input",
+                error.AlnumError.EOI)
         if ascii_only:
             if 'a' <= char <= 'z' or 'A' <= char <= 'Z' or '0' <= char <= '9':
                 return state.consume(1)
-            raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
+            raise core.ParsingFailure(
+                state,
+                f"Expected an alphanumeric character, got '{char}'",
+                error.AlnumError.NON_ALNUM)
         if char.isalnum():
             return state.consume(1)
-        raise core.ParsingFailure(f"Expected an alphanumeric character, got '{char}'")
+        raise core.ParsingFailure(
+            state,
+            f"Expected an alphanumeric character, got '{char}'",
+            error.AlnumError.NON_ALNUM)
     return alnum_body
 
 
@@ -51,14 +61,23 @@ def alpha(ascii_only=False):
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected an alphabetic character, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected an alphabetic character, got the end of input",
+                error.AlphaError.EOI)
         if ascii_only:
             if 'a' <= char <= 'z' or 'A' <= char <= 'Z':
                 return state.consume(1)
-            raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
+            raise core.ParsingFailure(
+                state,
+                f"Expected an alphabetic character, got '{char}'",
+                error.AlphaError.NON_ALPHA)
         if char.isalpha():
             return state.consume(1)
-        raise core.ParsingFailure(f"Expected an alphabetic character, got '{char}'")
+        raise core.ParsingFailure(
+            state,
+            f"Expected an alphabetic character, got '{char}'",
+            error.AlphaError.NON_ALPHA)
     return alpha_body
 
 
@@ -69,7 +88,10 @@ def any_char():
         try:
             _ = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected a character, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a character, got the end of input",
+                error.AnyCharError.EOI)
         return state.consume(1)
     return any_char_body
 
@@ -88,10 +110,16 @@ def cond_char(condition):
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected a character, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a character, got the end of input",
+                error.CondCharError.EOI)
         if condition(char):
             return state.consume(1)
-        raise core.ParsingFailure(f"{char} did not pass the {condition} test")
+        raise core.ParsingFailure(
+            state,
+            f"{char} did not pass the {condition} test",
+            error.CondCharError.DID_NOT_PASS)
     return cond_char_body
 
 
@@ -104,10 +132,16 @@ def digit():
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected a digit, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a digit, got the end of input",
+                error.DigitError.EOI)
         if '0' <= char <= '9':
             return state.consume(1)
-        raise core.ParsingFailure(f"Expected a digit, got '{char}'")
+        raise core.ParsingFailure(
+            state,
+            f"Expected a digit, got '{char}'",
+            error.DigitError.NOT_DIGIT)
     return digit_body
 
 
@@ -120,10 +154,16 @@ def hex_digit():
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected a hexadecimal digit, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a hexadecimal digit, got the end of input",
+                error.HexDigitError.EOI)
         if ('0' <= char <= '9') or ('a' <= char <= 'f') or ('A' <= char <= 'F'):
             return state.consume(1)
-        raise core.ParsingFailure(f"Expected a hexadecimal digit, got '{char}'")
+        raise core.ParsingFailure(
+            state,
+            f"Expected a hexadecimal digit, got '{char}'",
+            error.HexDigitError.NOT_DIGIT)
     return hex_digit_body
 
 
@@ -138,10 +178,16 @@ def newline():
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected a newline, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a newline, got the end of input",
+                error.NewlineError.EOI)
         if ord(char) in _LINE_SEPARATORS:
             return state.consume(1)
-        raise core.ParsingFailure(f"Expected a newline, got '{char}'")
+        raise core.ParsingFailure(
+            state,
+            f"Expected a newline, got '{char}'",
+            error.NewlineError.NOT_NEWLINE)
     return newline_body
 
 
@@ -153,10 +199,14 @@ def nonwhite_char():
             char = state.string[state.left_start]
         except IndexError:
             raise core.ParsingFailure(
-                "Expected a non-whitespace character, got the end of input")
+                state,
+                "Expected a non-whitespace character, got the end of input",
+                error.NonwhiteError.EOI)
         if char.isspace():
             raise core.ParsingFailure(
-                "Got a whitespace character when expecting a non-whitespace one")
+                state,
+                "Got a whitespace character when expecting a non-whitespace one",
+                error.NonwhiteError.WHITE)
         return state.consume(1)
     return nonwhite_char_body
 
@@ -171,20 +221,29 @@ def white_char(accept_newlines=False):
         try:
             char = state.string[state.left_start]
         except IndexError:
-            raise core.ParsingFailure("Expected a whitespace character, got the end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a whitespace character, got the end of input",
+                error.WhiteCharError.EOI)
         if accept_newlines:
             if char.isspace():
                 return state.consume(1)
-            else:
-                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
-        else:
-            if char.isspace():
-                if ord(char) in _LINE_SEPARATORS:
-                    raise core.ParsingFailure(
-                        f"Got a newline character {hex(ord(char))} when not accepting newlines")
-                return state.consume(1)
-            else:
-                raise core.ParsingFailure(f"Expected a whitespace character, got '{char}'")
+            raise core.ParsingFailure(
+                state,
+                f"Expected a whitespace character, got '{char}'",
+                error.WhiteCharError.NON_WHITE)
+        # not accepting newlines
+        if char.isspace():
+            if ord(char) in _LINE_SEPARATORS:
+                raise core.ParsingFailure(
+                    state,
+                    f"Got a newline character {hex(ord(char))} when not accepting newlines",
+                    error.WhiteCharError.NEWLINE)
+            return state.consume(1)
+        raise core.ParsingFailure(
+            state,
+            f"Expected a whitespace character, got '{char}'",
+            error.WhiteCharError.NON_WHITE)
     return white_char_body
 
 
@@ -199,7 +258,12 @@ def alnum_word(ascii_only=False):
     If 'ascii_only' is truthy, match only ASCII characters, otherwise match
     everything that is considered an alphanumeric character in Unicode.
     """
-    return many(alnum(ascii_only), 1)
+    error_transformer = _mk_aggregate_transformer(
+        error.AlnumError.EOI,
+        error.AlnumWordError.EOI,
+        error.AlnumWordError.NON_ALNUM,
+        "Expected an alphanumeric word")
+    return core.modify_error(many(alnum(ascii_only), 1), error_transformer)
 
 
 def alpha_word(ascii_only=False):
@@ -210,7 +274,12 @@ def alpha_word(ascii_only=False):
     If 'ascii_only' is truthy, match only ASCII characters, otherwise match
     everything that is considered an alphabetic character in Unicode.
     """
-    return many(alpha(ascii_only), 1)
+    error_transformer = _mk_aggregate_transformer(
+        error.AlphaError.EOI,
+        error.AlphaWordError.EOI,
+        error.AlphaWordError.NON_ALPHA,
+        "Expected a sequence of alphabetic characters")
+    return core.modify_error(many(alpha(ascii_only), 1), error_transformer)
 
 
 def any_word():
@@ -218,7 +287,12 @@ def any_word():
     Return a parser that will match a non-empty sequence of non-whitespace
     characters.
     """
-    return many(nonwhite_char(), 1)
+    error_transformer = _mk_aggregate_transformer(
+        error.NonwhiteError.EOI,
+        error.AnyWordError.EOI,
+        error.AnyWordError.WHITE,
+        "Expected a sequence of non-whitespace characters")
+    return core.modify_error(many(nonwhite_char(), 1), error_transformer)
 
 
 def hex_int(must_have_prefix=False):
@@ -228,8 +302,21 @@ def hex_int(must_have_prefix=False):
 
     If 'must_have_prefix' is truthy, fail if '0x' prefix is omitted.
     """
-    primary = many(hex_digit(), 1)
+    def prefix_error_transformer(exc):
+        """ Transform the error message about the missing prefix. """
+        return core.ParsingFailure(
+            exc.state,
+            f"Required prefix '0x' is not found in {repr(exc.state.left[:20])}",
+            error.HexIntError.NO_PREFIX)
+    primary_error_transformer = _mk_aggregate_transformer(
+        error.HexDigitError.EOI,
+        error.HexIntError.EOI,
+        error.HexIntError.NON_HEX_INT,
+        "Expected a sequence of hexadecimal digits")
     prefix = literal("0x") if must_have_prefix else maybe(literal("0x"))
+    prefix = core.modify_error(prefix, prefix_error_transformer)
+    primary = many(hex_digit(), 1)
+    primary = core.modify_error(primary, primary_error_transformer)
     return core.chain([prefix, primary])
 
 
@@ -237,7 +324,12 @@ def integer():
     """
     Return a parser that will match integers in base 10.
     """
-    return many(digit(), 1)
+    error_transformer = _mk_aggregate_transformer(
+        error.DigitError.EOI,
+        error.IntegerError.EOI,
+        error.IntegerError.NON_INT,
+        "Expected a sequence of digits")
+    return core.modify_error(many(digit(), 1), error_transformer)
 
 
 def line(include_newline=False):
@@ -252,7 +344,10 @@ def line(include_newline=False):
         pos = 0
         length = state.left_len
         if length == 0:
-            raise core.ParsingFailure("Expected a line, got an end of input")
+            raise core.ParsingFailure(
+                state,
+                "Expected a line, got an end of input",
+                error.LineError.EOI)
         while pos < length:
             char = state.string[state.left_start + pos]
             if ord(char) in _LINE_SEPARATORS:
@@ -272,7 +367,22 @@ def whitespace(min_num=1, accept_newlines=False):
     Return a parser that will consume at least 'min_num' whitespace characters,
     optionally with newlines as well.
     """
-    return many(white_char(accept_newlines), min_num)
+    def error_transformer(exc):
+        """ Transform the error message. """
+        if exc.code == error.WhiteCharError.EOI:
+            return core.ParsingFailure(
+                exc.state,
+                "Expected whitespace, got the end of input",
+                error.WhitespaceError.EOI)
+        if accept_newlines:
+            msg = f"Expected at least {min_num} characters of whitespace (and maybe newlines)"
+        else:
+            msg = f"Expected at least {min_num} characters of whitespace (not newlines)"
+        return core.ParsingFailure(
+            exc.state,
+            f"{msg}, got {repr(exc.state.left[:20])}",
+            error.WhitespaceError.NOT_ENOUGH)
+    return core.modify_error(many(white_char(accept_newlines), min_num), error_transformer)
 
 
 #--------- various ---------#
@@ -296,7 +406,10 @@ def balanced(opening, closing, include_outer_pair=False):
         open_len = len(opening)
         closing_len = len(closing)
         if state.string[state.left_start:state.left_start + open_len] != opening:
-            raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with '{opening}'")
+            raise core.ParsingFailure(
+                state,
+                f"{repr(state.left[0:20])} doesn't start with '{opening}'",
+                error.BalancedError.DOESNT_START)
         pos = state.left_start + open_len
         balance = 1
         while pos < state.left_end and balance != 0:
@@ -311,15 +424,19 @@ def balanced(opening, closing, include_outer_pair=False):
                 continue
             pos += 1
         if balance != 0:
-            raise core.ParsingFailure(f"Failed to find a balanced pair of '{opening}' "
-                                      f"and '{closing}'")
+            raise core.ParsingFailure(
+                state,
+                f"Failed to find a balanced pair of '{opening}' and '{closing}'",
+                error.BalancedError.NO_PAIR)
         if include_outer_pair:
-            return state._replace(left_start=pos,
-                                  parsed_start=state.left_start,
-                                  parsed_end=pos)
-        return state._replace(left_start=pos,
-                              parsed_start=state.left_start + open_len,
-                              parsed_end=pos - closing_len)
+            return state._replace(
+                left_start=pos,
+                parsed_start=state.left_start,
+                parsed_end=pos)
+        return state._replace(
+            left_start=pos,
+            parsed_start=state.left_start + open_len,
+            parsed_end=pos - closing_len)
     return balanced_body
 
 
@@ -329,7 +446,10 @@ def end_of_input():
         """ Match the end of input. """
         if state.left_start == state.left_end:
             return state._replace()
-        raise core.ParsingFailure(f"Expected the end of input, got '{state.left[0:20]}'")
+        raise core.ParsingFailure(
+            state,
+            f"Expected the end of input, got {repr(state.left[0:20])}",
+            error.EndOfInputError.NOT_END)
     return end_of_input_body
 
 
@@ -337,9 +457,10 @@ def everything():
     """ Return a parser that consumes all remaining input. """
     def everything_body(state):
         """ Consume all remaining input. """
-        return state._replace(parsed_start=state.left_start,
-                              parsed_end=state.left_end,
-                              left_start=state.left_end)
+        return state._replace(
+            parsed_start=state.left_start,
+            parsed_end=state.left_end,
+            left_start=state.left_end)
     return everything_body
 
 
@@ -350,11 +471,17 @@ def literal(lit):
     def literal_body(state):
         """ Match a literal. """
         if state.left_len < len(lit):
-            raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with {lit}")
+            raise core.ParsingFailure(
+                state,
+                f"{repr(state.left[:20])} doesn't start with {lit}",
+                error.LiteralError.SHORTER)
         i = -1
         for i, char in enumerate(lit):
             if char != state.string[state.left_start + i]:
-                raise core.ParsingFailure(f"'{state.left[0:20]}' doesn't start with {lit}")
+                raise core.ParsingFailure(
+                    state,
+                    f"'{repr(state.left[:20])} doesn't start with {lit}",
+                    error.LiteralError.DOESNT_START)
         return state.consume(i + 1)
     return literal_body
 
@@ -371,8 +498,9 @@ def maybe(parser):
         try:
             return parser(state)
         except core.ParsingFailure:
-            return state._replace(parsed_start=state.left_start,
-                                  parsed_end=state.left_start)
+            return state._replace(
+                parsed_start=state.left_start,
+                parsed_end=state.left_start)
     return core.copy_lookahead(parser, maybe_body)
 
 
@@ -399,11 +527,11 @@ def many(parser, min_hits=0, max_hits=0, combine=True):
     if max_hits > 0 and max_hits < min_hits:
         raise ValueError("'max_hits' is less than 'min_hits'")
     if min_hits > 0:
-        must = core.chain(core.reuse_iter(itools.repeat, parser, min_hits), combine)
+        must = core.chain(itools.repeat(parser, min_hits), combine)
     else:
         must = None
     if max_hits > 0:
-        might = core.chain(core.reuse_iter(itools.repeat, parser, max_hits - min_hits),
+        might = core.chain(itools.repeat(parser, max_hits - min_hits),
                            combine=combine,
                            stop_on_failure=True)
     else:
@@ -417,7 +545,13 @@ def multi(literals):
     """
     Return a parser that will match any of given literals.
     """
-    return core.branch(core.reuse_iter(map, literal, literals))
+    def error_transformer(exc):
+        """ Transform the error message. """
+        return core.ParsingFailure(
+            exc.state,
+            f"None of the literals matched the input: {repr(exc.state.left[:20])}'",
+            error.MultiError.ALL_FAILED)
+    return core.modify_error(core.branch(map(literal, literals)), error_transformer)
 
 
 def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
@@ -443,19 +577,23 @@ def repeat_while(cond, window_size=1, min_repetitions=0, combine=True):
         while True:
             window_start = state.left_start + rep * window_size
             window_end = window_start + window_size
-            window = state.left[window_start:window_end]
+            window = state.string[window_start:window_end]
             if cond(state, window):
                 rep += 1
                 continue
             if rep < min_repetitions:
-                raise core.ParsingFailure("Failed to achieve required minimum of repetitions")
+                msg = "Failed to achieve required minimum of repetitions " \
+                      f"on input: {repr(state.left[:20])}'"
+                raise core.ParsingFailure(state, msg, error.RepeatWhileError.NOT_ENOUGH)
             if combine:
-                return state._replace(left_start=window_start,
-                                      parsed_start=start,
-                                      parsed_end=window_start)
-            return state._replace(left_start=window_start,
-                                  parsed_start=window_start - window_size,
-                                  parsed_end=window_start)
+                return state._replace(
+                    left_start=window_start,
+                    parsed_start=start,
+                    parsed_end=window_start)
+            return state._replace(
+                left_start=window_start,
+                parsed_start=window_start - window_size,
+                parsed_end=window_start)
     return repeat_while_body
 
 
@@ -473,7 +611,9 @@ def take(num, fail_on_fewer=True):
     def take_body(state):
         """ Consume a fixed number of characters. """
         if fail_on_fewer and state.left_len < num:
-            raise core.ParsingFailure(f"Less than requested number of characters received")
+            msg = "Less than requested number of characters received on input: " \
+                  f"{repr(state.left[:20])}'"
+            raise core.ParsingFailure(state, msg, error.TakeError.NOT_ENOUGH)
         return state.consume(min(num, state.left_len))
     return take_body
 
@@ -505,4 +645,25 @@ def weave(parsers, separator, trailing=None, stop_on_failure=False):
 
 #--------- helper things ---------#
 
+
 _LINE_SEPARATORS = [0x000a, 0x000d, 0x001c, 0x001d, 0x001e, 0x0085, 0x2028, 0x2029]
+
+
+def _mk_aggregate_transformer(
+        eoi_code_in,
+        eoi_code_out,
+        generic_code_out,
+        msg):
+    """ Create an error transformer for aggregate functions. """
+    def transformer(exc):
+        """ Transform the error message. """
+        if exc.code == eoi_code_in:
+            return core.ParsingFailure(
+                exc.state,
+                f"{msg}, got the end of input",
+                eoi_code_out)
+        return core.ParsingFailure(
+            exc.state,
+            f"{msg}, got {repr(exc.state.left[:20])}",
+            generic_code_out)
+    return transformer

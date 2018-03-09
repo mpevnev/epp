@@ -286,7 +286,7 @@ class TestCore(unittest.TestCase):
         """ Test 'modify_error' parser generator. """
         string = "irrelevant"
         state = epp.State(string)
-        parser = epp.modify_error(epp.fail(), lambda err: epp.ParsingFailure("!"))
+        parser = epp.modify_error(epp.fail(), lambda err: epp.ParsingFailure(err.state, "!"))
         output = epp.parse(None, state, parser, verbose=True)
         self.assertEqual(output.args, ("!",))
 

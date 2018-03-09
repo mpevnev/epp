@@ -14,9 +14,13 @@ successfully.
 
 """
 
+
 from collections import deque, namedtuple
 import enum
 import itertools as it
+
+
+import epp.errors as error
 
 
 #--------- base things ---------#
@@ -158,14 +162,16 @@ class ParsingFailure(Exception):
     """
     An exception of this type should be thrown if parsing fails.
     
-    The constructor takes two arguments: the error message and an optional code
-    which (in predefined parsers) is used to tell apart the reasons for the
-    failure within the same parser.
+    The constructor takes three arguments: the state that has caused a parser
+    to fail, the error message and an optional code which (in predefined
+    parsers) is used to tell apart the reasons for the failure within the same
+    parser.
     """
 
-    def __init__(self, text, code=0):
+    def __init__(self, failed_state, text, code=0):
         super().__init__(text)
         self.code = code
+        self.state = failed_state
 
 
 class ParsingEnd(Exception):
@@ -244,7 +250,9 @@ def branch(funcs, save_iterator=True):
                 return end.state
             except ParsingFailure:
                 continue
-        raise ParsingFailure("All parsers in a branching point have failed")
+        raise ParsingFailure(state, 
+                             "All parsers in a branching point have failed",
+                             error.BranchError.ALL_FAILED)
     return branch_body
 
 
@@ -346,7 +354,7 @@ def fail():
     """ Return a parser that always fails. """
     def fail_body(state):
         """ Fail immediately. """
-        raise ParsingFailure("'fail' parser has been reached")
+        raise ParsingFailure(state, "'fail' parser has been reached", error.FailError.FAILED)
     return fail_body
 
 
@@ -425,7 +433,7 @@ def subparse(seed, parser, absorber):
         """ Absorb results of another parser into the chain. """
         output = parse(seed, state, parser)
         if output is None:
-            raise ParsingFailure("Subparsing failed")
+            raise ParsingFailure(state, "Subparsing failed", error.SubparseError.FAILED)
         value, after = output
         after = after._replace(effect=lambda val, st: absorber(val, state, value, after))
         return after
@@ -443,7 +451,9 @@ def test(testfn):
         """ State testing function. """
         if testfn(state):
             return state._replace(parsed_start=state.left_start, parsed_end=state.left_start)
-        raise ParsingFailure(f"Function {testfn} returned a falsey value on '{state.left[0:20]}'")
+        raise ParsingFailure(state,
+                             f"Function {testfn} returned a falsey value on '{state.left[0:20]}'",
+                             error.TestError.FAILED)
     return test_body
 
 
@@ -768,7 +778,9 @@ class _Chain():
         while True:
             pos = _shift(self.lookahead_chain, start_from)
             if pos is None:
-                raise ParsingFailure("No combination of inputs allows successful parsing")
+                raise ParsingFailure(state,
+                                     "No combination of inputs allows successful parsing",
+                                     error.ChainError.LOOKAHEAD_FAILED)
             _reset_chain(self.lookahead_chain, pos)
             after, failed = _try_chain(self.lookahead_chain, pos, self.effect_points)
             if after is None:
