@@ -155,8 +155,17 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
 
 
 class ParsingFailure(Exception):
-    """ An exception of this type should be thrown if parsing fails. """
-    pass
+    """
+    An exception of this type should be thrown if parsing fails.
+    
+    The constructor takes two arguments: the error message and an optional code
+    which (in predefined parsers) is used to tell apart the reasons for the
+    failure within the same parser.
+    """
+
+    def __init__(self, text, code=0):
+        super().__init__(text)
+        self.code = code
 
 
 class ParsingEnd(Exception):
@@ -356,6 +365,22 @@ def lazy(generator, *args, **kwargs):
         parser = generator(*args, **kwargs)
         return parser(state)
     return lazy_body
+
+
+def modify_error(parser, error_transformer):
+    """
+    Return a parser that will run 'parser' and, if it fails, modifies raised
+    ParsingFailure exception by running it through 'error_transformer' (which
+    should be a callable of a single argument, and should return an exception)
+    and re-raising its return value.
+    """
+    def modify_error_msg_body(state):
+        """ Modify error message. """
+        try:
+            return parser(state)
+        except ParsingFailure as failure:
+            raise error_transformer(failure)
+    return copy_lookahead(parser, modify_error_msg_body)
 
 
 def noconsume(parser):

@@ -282,6 +282,14 @@ class TestCore(unittest.TestCase):
         self.assertEqual(after.left, "")
         self.assertEqual(after.parsed, string)
 
+    def test_modify_error(self):
+        """ Test 'modify_error' parser generator. """
+        string = "irrelevant"
+        state = epp.State(string)
+        parser = epp.modify_error(epp.fail(), lambda err: epp.ParsingFailure("!"))
+        output = epp.parse(None, state, parser, verbose=True)
+        self.assertEqual(output.args, ("!",))
+
     def test_noconsume(self):
         """ Test 'noconsume' parser generator. """
         string = "foo"
