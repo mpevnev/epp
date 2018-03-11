@@ -627,9 +627,9 @@ def _try_chain(parsers, from_pos, num_prelookahead, effect_points):
     """
     state = parsers[from_pos].state_before
     new_effect_points = deque()
-    drop_effects_after = effect_points.find(lambda point: point[1] >= from_pos)
-    i = from_pos - num_prelookahead
-    for i in range(from_pos - num_prelookahead, len(parsers)):
+    pre = num_prelookahead
+    drop_effects_after = effect_points.find(lambda point: point[1] >= from_pos + pre)
+    for i in range(0, len(parsers)):
         try:
             parsers[i].state_before = state
             state = parsers[i](state)
