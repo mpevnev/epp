@@ -237,6 +237,10 @@ def branch(funcs, save_iterator=True):
     your branch will be run only once, or if you already use a reusable
     iterable such as a list or a deque, you can pass False as 'save_iterator'
     to avoid memory overhead.
+
+    Note that branches inherit lookahead from the first parser inside them that
+    has the capability, which in turn can influence also the parsers that do
+    not perform lookahead normally.
     """
     return _Branch(funcs, save_iterator)
 
@@ -310,6 +314,9 @@ def chain(funcs, combine=True, stop_on_failure=False, all_or_nothing=True,
     memory consumption. Disable it only if you're sure that the chain will only
     be used once, or if you've wrapped the iterator into some reusable
     iterable, like a list or a deque, or if you've used 'reuse_iter'.
+
+    Note that chains inherit lookahead mode from the first parser inside them
+    that has the capability.
     """
     return _Chain(funcs, combine, stop_on_failure, all_or_nothing, save_iterator)
 
@@ -657,10 +664,23 @@ class _Branch():
 
     def parse(self, state):
         """ Parse the state using this branching point. """
-        saved_len = len(self.saved)
-        for i, parser in enumerate(it.chain(self.saved, self.parsers)):
+        if self.saved is None:
+            iterator = enumerate(self.parsers)
+            saved_len = -1
+        else:
+            iterator = enumerate(it.chain(self.saved, self.parsers))
+            saved_len = len(self.saved)
+        try:
+            i, parser = next(iterator)
+        except StopIteration:
+            raise ParsingFailure(
+                state,
+                "Empty branching point",
+                error.BranchError.EMPTY)
+        while True:
             if no_lookahead(self) and has_lookahead(parser):
                 copy_lookahead(parser, self)
+                raise _GainedLookahead
             if i >= saved_len and self.saved is not None:
                 self.saved.append(parser)
             try:
@@ -668,6 +688,14 @@ class _Branch():
             except ParsingEnd as end:
                 return end.state
             except ParsingFailure:
+                try:
+                    i, parser = next(iterator)
+                except StopIteration:
+                    break
+            except _GainedLookahead:
+                if no_lookahead(self):
+                    copy_lookahead(parser, self)
+                    raise
                 continue
         raise ParsingFailure(
             state,
