@@ -83,6 +83,29 @@ class TestCore(unittest.TestCase):
         output = epp.parse(None, state, parser)
         self.assertIsNone(output)
 
+    def test_branch_negative_2(self):
+        """ Test 'branch' parser generator, negative check #2. """
+        string = "4"
+        state = epp.State(string)
+        parser = epp.branch([
+            epp.literal("1"),
+            epp.literal("2"),
+            epp.literal("3")], save_iterator=False)
+        output = epp.parse(None, state, parser)
+        self.assertIsNone(output)
+
+    def test_branch_negative_3(self):
+        """
+        Test 'branch' parser generator, negative check #3.
+
+        Test that 'branch' fails if the supplied iterable is empty.
+        """
+        parser = epp.branch([])
+        output = epp.parse(None, "", parser, verbose=True)
+        self.assertIsNotNone(output)
+        self.assertTrue(isinstance(output, epp.ParsingFailure))
+        self.assertEqual(output.code, epp.BranchError.EMPTY)
+
     def test_branch_positive_1(self):
         """ Test 'branch' parser generator, positive check #1. """
         seed = 12
@@ -114,6 +137,23 @@ class TestCore(unittest.TestCase):
         self.assertEqual(value, seed)
         self.assertEqual(after.parsed, "ab")
         self.assertEqual(after.left, "3")
+
+    def test_branch_positive_3(self):
+        """
+        Test 'branch' parser generator, positive check #3.
+
+        Test behaviour of a saving branch on multiple uses.
+        """
+        string = "b"
+        state = epp.State(string)
+        parser = epp.branch(
+            [epp.literal("a"),
+             epp.literal("b")])
+        output1 = epp.parse(None, state, parser)
+        self.assertIsNotNone(output1)
+        output2 = epp.parse(None, state, parser)
+        self.assertIsNotNone(output2)
+        self.assertEqual(output1, output2)
 
     def test_catch_negative_1(self):
         """ Test 'catch' parser generator, negative check #1. """
