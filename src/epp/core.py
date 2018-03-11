@@ -679,7 +679,6 @@ class _Branch():
                 "Empty branching point",
                 error.BranchError.EMPTY)
         while True:
-            print("!!!", i, "!!!")
             if no_lookahead(self) and has_lookahead(parser):
                 copy_lookahead(parser, self)
                 raise _GainedLookahead
