@@ -1466,6 +1466,18 @@ class TestLookahead(unittest.TestCase):
 class TestEffects(unittest.TestCase):
     """ Test effects system. """
 
+    def test_branch_positive(self):
+        """ Test effects in branches, positive check. """
+        string = "2"
+        state = epp.State(string)
+        parser = epp.branch(
+            [epp.literal("1"),
+             epp.chain([epp.literal("2"), epp.effect(lambda val, st: 2)])])
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, 2)
+
     def test_effects_in_depth_negative(self):
         """
         Test effects that are not in the top level of a chain, negative check.
@@ -1552,7 +1564,6 @@ class TestEffects(unittest.TestCase):
         self.assertIsNotNone(output)
         value, _ = output
         self.assertEqual(value, 111)
-
 
     def test_many(self):
         """ Test 'many's interaction with effects. """
