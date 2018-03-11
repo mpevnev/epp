@@ -668,7 +668,8 @@ class _Branch():
             iterator = enumerate(self.parsers)
             saved_len = -1
         else:
-            iterator = enumerate(it.chain(self.saved, self.parsers))
+            copy = self.saved.copy()
+            iterator = enumerate(it.chain(copy, self.parsers))
             saved_len = len(self.saved)
         try:
             i, parser = next(iterator)
@@ -678,6 +679,7 @@ class _Branch():
                 "Empty branching point",
                 error.BranchError.EMPTY)
         while True:
+            print("!!!", i, "!!!")
             if no_lookahead(self) and has_lookahead(parser):
                 copy_lookahead(parser, self)
                 raise _GainedLookahead

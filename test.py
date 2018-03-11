@@ -1580,5 +1580,6 @@ class TestEffects(unittest.TestCase):
         value, _ = output
         self.assertEqual(value, ["1", "2"])
 
+
 if __name__ == "__main__":
     unittest.main()

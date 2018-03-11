@@ -13,6 +13,7 @@ from enum import Enum, auto
 class BranchError(Enum):
     """ Error codes for 'branch' parsers. """
     ALL_FAILED = auto()
+    EMPTY = auto()
 
 
 class ChainError(Enum):
