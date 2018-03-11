@@ -1313,6 +1313,20 @@ class TestParsers(unittest.TestCase):
 class TestLookahead(unittest.TestCase):
     """ Test lookahead mechanism. """
 
+    def test_branch_positive_1(self):
+        """ Test lookahead in branches. """
+        string = "2b"
+        state = epp.State(string)
+        parser = epp.branch(
+            [epp.literal("1"),
+             epp.chain([epp.greedy(epp.everything()), epp.literal("b")]),
+             epp.literal("3")])
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, "")
+        self.assertEqual(after.parsed, string)
+
     def test_greedy_negative_1(self):
         """ Test 'greedy' lookahead mode, negative check #1. """
         string = "2"
