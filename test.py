@@ -1327,6 +1327,22 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(after.left, "")
         self.assertEqual(after.parsed, string)
 
+    def test_greediness_in_the_middle(self):
+        """ Test what happens if a greedy parser is bracketed. """
+        string = "foo bar baz"
+        white = epp.whitespace(min_num=1)
+        parser = epp.chain(
+            [epp.literal("foo"),
+             white,
+             epp.chain([epp.greedy(epp.everything()), 
+                        epp.effect(lambda val, st: st.parsed)]),
+             white,
+             epp.literal("baz")])
+        output = epp.parse(None, string, parser)
+        self.assertIsNotNone(output)
+        value, _ = output
+        self.assertEqual(value, "bar")
+
     def test_greedy_negative_1(self):
         """ Test 'greedy' lookahead mode, negative check #1. """
         string = "2"
@@ -1604,6 +1620,12 @@ class TestEffects(unittest.TestCase):
         self.assertIsNotNone(output)
         value, _ = output
         self.assertEqual(value, ["1", "2"])
+
+
+class ExploratoryTesting(unittest.TestCase):
+    """ Exploratory tests. """
+    pass
+
 
 
 if __name__ == "__main__":
