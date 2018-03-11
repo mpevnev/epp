@@ -1349,6 +1349,19 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(after.parsed, "d")
         self.assertEqual(after.left, "")
 
+    def test_nested_positive_1(self):
+        """ Test lookahead in nested chains, positive check #1. """
+        string = "ab"
+        state = epp.State(string)
+        parser = epp.chain(
+            [epp.chain([epp.greedy(epp.everything())]),
+             epp.literal("b")])
+        output = epp.parse(None, state, parser)
+        self.assertIsNotNone(output)
+        _, after = output
+        self.assertEqual(after.left, "")
+        self.assertEqual(after.parsed, string)
+
     def test_reluctant_negative_1(self):
         """ Test 'reluctant' lookahead mode, negative check #1. """
         string = "2"

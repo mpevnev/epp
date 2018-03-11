@@ -161,7 +161,7 @@ class State(namedtuple("State", "string effect left_start left_end parsed_start 
 class ParsingFailure(Exception):
     """
     An exception of this type should be thrown if parsing fails.
-    
+
     The constructor takes three arguments: the state that has caused a parser
     to fail, the error message and an optional code which (in predefined
     parsers) is used to tell apart the reasons for the failure within the same
@@ -204,19 +204,22 @@ def parse(seed, state_or_string, parser, verbose=False):
         state = State(state_or_string)
     else:
         state = state_or_string
-    try:
-        after = parser(state)
-        if after.effect is not None:
-            return after.effect(seed, after), after
-        return seed, after
-    except ParsingFailure as failure:
-        if verbose:
-            return failure
-        return None
-    except ParsingEnd as end:
-        if end.state.effect is not None:
-            return end.state.effect(seed, end.state), end.state
-        return seed, end.state
+    while True:
+        try:
+            after = parser(state)
+            if after.effect is not None:
+                return after.effect(seed, after), after
+            return seed, after
+        except ParsingFailure as failure:
+            if verbose:
+                return failure
+            return None
+        except ParsingEnd as end:
+            if end.state.effect is not None:
+                return end.state.effect(seed, end.state), end.state
+            return seed, end.state
+        except _GainedLookahead:
+            continue
 
 
 #--------- core parsers generators ---------#
@@ -235,25 +238,7 @@ def branch(funcs, save_iterator=True):
     iterable such as a list or a deque, you can pass False as 'save_iterator'
     to avoid memory overhead.
     """
-    saved = deque()
-    if save_iterator:
-        funcs = iter(funcs)
-    def branch_body(state):
-        """ A tree of parsers. """
-        saved_len = len(saved)
-        for i, parser in enumerate(it.chain(saved, funcs)):
-            if i >= saved_len and save_iterator:
-                saved.append(parser)
-            try:
-                return parser(state)
-            except ParsingEnd as end:
-                return end.state
-            except ParsingFailure:
-                continue
-        raise ParsingFailure(state, 
-                             "All parsers in a branching point have failed",
-                             error.BranchError.ALL_FAILED)
-    return branch_body
+    return _Branch(funcs, save_iterator)
 
 
 def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
@@ -626,7 +611,7 @@ def _partial_parse(state, parser, at):
     return after
 
 
-def _try_chain(parsers, from_pos, effect_points):
+def _try_chain(parsers, from_pos, num_prelookahead, effect_points):
     """
     Try to parse the state the first parser in the chain remembers.
 
@@ -636,8 +621,8 @@ def _try_chain(parsers, from_pos, effect_points):
     state = parsers[from_pos].state_before
     new_effect_points = deque()
     drop_effects_after = effect_points.find(lambda point: point[1] >= from_pos)
-    i = from_pos
-    for i in range(from_pos, len(parsers)):
+    i = from_pos - num_prelookahead
+    for i in range(from_pos - num_prelookahead, len(parsers)):
         try:
             parsers[i].state_before = state
             state = parsers[i](state)
@@ -654,6 +639,40 @@ def _try_chain(parsers, from_pos, effect_points):
         effect_points.drop(len(effect_points) - drop_effects_after)
     effect_points.extend(new_effect_points)
     return state, i
+
+
+class _Branch():
+    """ A parser trying several alternative parsers. """
+
+    def __init__(self, funcs, save_iterator):
+        if save_iterator:
+            self.saved = deque()
+            self.parsers = iter(funcs)
+        else:
+            self.saved = None
+            self.parsers = funcs
+
+    def __call__(self, state):
+        return self.parse(state)
+
+    def parse(self, state):
+        """ Parse the state using this branching point. """
+        saved_len = len(self.saved)
+        for i, parser in enumerate(it.chain(self.saved, self.parsers)):
+            if no_lookahead(self) and has_lookahead(parser):
+                copy_lookahead(parser, self)
+            if i >= saved_len and self.saved is not None:
+                self.saved.append(parser)
+            try:
+                return parser(state)
+            except ParsingEnd as end:
+                return end.state
+            except ParsingFailure:
+                continue
+        raise ParsingFailure(
+            state,
+            "All parsers in a branching point have failed",
+            error.BranchError.ALL_FAILED)
 
 
 class _CachedAppender():
@@ -732,6 +751,8 @@ class _Chain():
     A chain of parsers.
     """
 
+    STATE = "state"
+
     def __init__(self, funcs, combine, stop_on_failure, all_or_nothing, save_iterator):
         self.combine = combine
         self.stop_on_failure = stop_on_failure
@@ -745,6 +766,7 @@ class _Chain():
         self.effect_points = None
         self.first_state = None
         self.lookahead_chain = None
+        self.num_prelookahead_parsers = 0
 
     def __call__(self, state):
         self.reset(state)
@@ -771,28 +793,70 @@ class _Chain():
         self.effect_points = _CachedAppender()
         self.first_state = state
         self.lookahead_chain = None
+        self.num_prelookahead_parsers = 0
 
-    def start_backtracking(self, state, parsers):
+    def indexed_parsers(self):
+        """ Return an iterator of (index, parser) in the chain. """
+        if self.saved_parsers is None:
+            return enumerate(self.parsers)
+        # deques' iterators throw if the deque is modified during traversal.
+        # Hence, copy
+        saved = self.saved_parsers.copy()
+        return enumerate(it.chain(saved, self.parsers))
+
+    def maybe_save(self, index, num_saved, parser):
+        """
+        Save the parser if it wasn't yet saved and if the chain is configured
+        to save parsers.
+
+        Return True if the parser was saved, False otherwise.
+        """
+        if num_saved >= 0 and index >= num_saved:
+            self.saved_parsers.append(parser)
+            return True
+        return False
+
+    def drop_retried_parser(self, did_save, pos):
+        """
+        Drop the retried parser from saved parsers. Also drop its effect, if
+        any.
+        """
+        if did_save:
+            self.saved_parsers.pop()
+        drop_effects_after = self.effect_points.find(lambda point: point[1] >= pos)
+        if drop_effects_after is not None:
+            self.effect_points.drop(len(self.effect_points) - drop_effects_after)
+
+    def normal_loop(self, state_wrapper, indexed_parsers):
+        """ Normal parsing routine - just chain the parsers. """
+        num_saved = -1 if self.saved_parsers is None else len(self.saved_parsers)
+        for i, parser in indexed_parsers:
+            did_save = self.maybe_save(i, num_saved, parser)
+            state_wrapper[self.STATE] = self.parse_one(
+                state_wrapper[self.STATE], parser, i, did_save)
+        return self.prep_output_state(state_wrapper[self.STATE], False)
+
+    def start_backtracking(self, state_wrapper, indexed_parsers):
         """ Start backtracking, then continue with normal parsing. """
         start_from = len(self.lookahead_chain) - 1
         while True:
             pos = _shift(self.lookahead_chain, start_from)
             if pos is None:
-                raise ParsingFailure(state,
-                                     "No combination of inputs allows successful parsing",
-                                     error.ChainError.LOOKAHEAD_FAILED)
+                raise ParsingFailure(
+                    state_wrapper[self.STATE],
+                    "No combination of inputs allows successful parsing",
+                    error.ChainError.LOOKAHEAD_FAILED)
             _reset_chain(self.lookahead_chain, pos)
-            after, failed = _try_chain(self.lookahead_chain, pos, self.effect_points)
+            pre = self.num_prelookahead_parsers
+            after, failed = _try_chain(self.lookahead_chain, pos, pre, self.effect_points)
             if after is None:
                 start_from = failed
                 continue
-            state = after
+            state_wrapper[self.STATE] = after
             try:
-                for parser in parsers:
-                    state = self.parse_one(state, parser)
-                return self.prep_output_state(state, False)
+                return self.normal_loop(state_wrapper, indexed_parsers)
             except ParsingEnd as end:
-                raise self.prep_end_exception(end, state)
+                raise self.prep_end_exception(end, state_wrapper[self.STATE])
             except ParsingFailure:
                 start_from = len(self.lookahead_chain) - 1
                 continue
@@ -800,41 +864,43 @@ class _Chain():
     def parse(self):
         """ Try to parse the initial state. """
         try:
-            if self.saved_parsers is not None:
-                saved = self.saved_parsers.copy()
-                num_saved = len(saved)
-                parsers = it.chain(saved, self.parsers)
-            else:
-                num_saved = -1
-                parsers = self.parsers
-            state = self.first_state
-            for i, parser in enumerate(parsers):
-                if num_saved >= 0 and i >= num_saved:
-                    self.saved_parsers.append(parser)
-                state = self.parse_one(state, parser)
-            return self.prep_output_state(state, False)
+            indexed_parsers = self.indexed_parsers()
+            state_wrapper = {self.STATE: self.first_state}
+            return self.normal_loop(state_wrapper, indexed_parsers)
         except ParsingEnd as end:
-            raise self.prep_end_exception(end, state)
+            raise self.prep_end_exception(end, state_wrapper[self.STATE])
         except ParsingFailure as failure:
             if self.stop_on_failure:
-                return self.prep_output_state(state, True)
+                return self.prep_output_state(state_wrapper[self.STATE], True)
             if self.lookahead_chain is None:
                 raise failure
-            return self.start_backtracking(state, parsers)
+            return self.start_backtracking(state_wrapper, indexed_parsers)
 
-    def parse_one(self, state, parser):
+    def parse_one(self, state, parser, index, did_save):
         """ Parse using a single parser. Return the resulting state. """
-        pos = None
-        if self.lookahead_chain is None and has_lookahead(parser):
-            self.lookahead_chain = _CachedAppender()
-        if self.lookahead_chain is not None:
-            parser = _restrict(parser, state)
-            pos = len(self.lookahead_chain)
-            self.lookahead_chain.append(parser)
-        after = parser(state)
-        if after.effect is not None:
-            self.effect_points.append((after, pos))
-        return after
+        while True:
+            parser_has_lookahead = has_lookahead(parser)
+            if no_lookahead(self) and parser_has_lookahead:
+                copy_lookahead(parser, self)
+                raise _GainedLookahead
+            if self.lookahead_chain is None and parser_has_lookahead:
+                self.lookahead_chain = _CachedAppender()
+            if self.lookahead_chain is None:
+                self.num_prelookahead_parsers += 1
+            else:
+                parser = _restrict(parser, state)
+                self.lookahead_chain.append(parser)
+            try:
+                after = parser(state)
+            except _GainedLookahead:
+                if no_lookahead(self):
+                    copy_lookahead(parser, self)
+                    raise
+                self.drop_retried_parser(did_save, index)
+                continue
+            if after.effect is not None:
+                self.effect_points.append((after, index))
+            return after
 
 
 class _RestrictedParser():
@@ -871,3 +937,10 @@ class _RestrictedParser():
     def restrict_more(self):
         """ Increase restriction level on the input. """
         self.delta += 1
+
+
+class _GainedLookahead(Exception):
+    """
+    An internal signal to be used when lookahead mode of a chain has changed.
+    """
+    pass
