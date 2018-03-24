@@ -360,11 +360,7 @@ def lazy(generator, *args, **kwargs):
     Make 'generator' lazy. It will only be called when it's time to actually
     parse a string. Useful for recursive parsers.
     """
-    def lazy_body(state):
-        """ Lazily create a parser. """
-        parser = generator(*args, **kwargs)
-        return parser(state)
-    return lazy_body
+    return _Lazy(generator, args, kwargs)
 
 
 def modify_error(parser, error_transformer):
@@ -629,10 +625,11 @@ def _try_chain(parsers, from_pos, num_prelookahead, effect_points):
     new_effect_points = deque()
     pre = num_prelookahead
     drop_effects_after = effect_points.find(lambda point: point[1] >= from_pos + pre)
-    for i in range(0, len(parsers)):
+    i = len(parsers)
+    for i, parser in enumerate(parsers):
         try:
-            parsers[i].state_before = state
-            state = parsers[i](state)
+            parser.state_before = state
+            state = parser(state)
             if state.effect is not None:
                 new_effect_points.append((state, i))
         except ParsingFailure:
@@ -930,6 +927,28 @@ class _Chain():
             if after.effect is not None:
                 self.effect_points.append((after, index))
             return after
+
+
+class _Lazy():
+    """ A lazy parser generator. """
+
+    def __init__(self, generator, args, kwargs):
+        self.generator = generator
+        self.args = args
+        self.kwargs = kwargs
+        self.saved_parser = None
+
+    def __call__(self, state):
+        if self.saved_parser is not None:
+            p = self.saved_parser
+            self.saved_parser = None
+            return p(state)
+        p = self.generator(*self.args, **self.kwargs)
+        try:
+            return p(state)
+        except _GainedLookahead:
+            self.saved_parser = p
+            raise
 
 
 class _RestrictedParser():
