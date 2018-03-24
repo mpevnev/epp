@@ -4,6 +4,7 @@
 Unit tests for epp library.
 """
 
+import collections as coll
 import itertools as it
 import unittest
 
@@ -1419,6 +1420,30 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(after.parsed, "d")
         self.assertEqual(after.left, "")
 
+    def test_lazy_with_lookahead_inside(self):
+        """ Try for an eternal loop somewhere. """
+        deque = coll.deque([1, 2, 3])
+        def specific_parser(i):
+            """ A parser for a specific element of the deque. """
+            return epp.chain(
+                [epp.literal(str(i)),
+                 epp.effect(lambda val, st: i)],
+                save_iterator=False)
+        def generator():
+            """ A parser generator. """
+            variants = map(specific_parser, deque)
+            catchall = epp.chain(
+                [epp.greedy(epp.everything()),
+                 epp.effect(lambda val, st: -1)],
+                save_iterator=False)
+            return epp.branch(it.chain(variants, [catchall]))
+        parser = epp.lazy(generator)
+        string = "5a"
+        output = epp.parse(None, string, parser)
+        self.assertIsNotNone(output)
+        value, after = output
+        self.assertEqual(value, -1)
+
     def test_nested_positive_1(self):
         """ Test lookahead in nested chains, positive check #1. """
         string = "ab"
@@ -1623,9 +1648,14 @@ class TestEffects(unittest.TestCase):
 
 
 class ExploratoryTesting(unittest.TestCase):
-    """ Exploratory tests. """
+    """
+    Exploratory tests.
+    
+    Test from here will migrate to other cases once the thing I've been trying
+    is done (and fixed).
+    """
     pass
-
+    
 
 
 if __name__ == "__main__":
