@@ -1421,7 +1421,7 @@ class TestLookahead(unittest.TestCase):
         self.assertEqual(after.left, "")
 
     def test_lazy_with_lookahead_inside(self):
-        """ Try for an eternal loop somewhere. """
+        """ Test lookahead interaction with lazyness. """
         deque = coll.deque([1, 2, 3])
         def specific_parser(i):
             """ A parser for a specific element of the deque. """
