@@ -107,6 +107,22 @@ class TestCore(unittest.TestCase):
         self.assertTrue(isinstance(output, epp.ParsingFailure))
         self.assertEqual(output.code, epp.BranchError.EMPTY)
 
+    def test_branch_negative_4(self):
+        """
+        Test 'branch' parser generator, negative check #4.
+
+        Test that 'branch fails if several parsers from the supplied iterable
+        succeed and the 'strictly_one' flag is set.
+        """
+        parser = epp.branch(
+            [epp.literal("a"),
+             epp.everything()],
+            strictly_one=True)
+        output = epp.parse(None, "a", parser, verbose=True)
+        self.assertIsNotNone(output)
+        self.assertTrue(isinstance(output, epp.ParsingFailure))
+        self.assertEqual(output.code, epp.BranchError.MORE_THAN_ONE_SUCCEEDED)
+
     def test_branch_positive_1(self):
         """ Test 'branch' parser generator, positive check #1. """
         seed = 12

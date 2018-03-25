@@ -14,6 +14,7 @@ class BranchError(Enum):
     """ Error codes for 'branch' parsers. """
     ALL_FAILED = auto()
     EMPTY = auto()
+    MORE_THAN_ONE_SUCCEEDED = auto()
 
 
 class ChainError(Enum):

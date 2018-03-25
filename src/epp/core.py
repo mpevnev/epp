@@ -225,10 +225,10 @@ def parse(seed, state_or_string, parser, verbose=False):
 #--------- core parsers generators ---------#
 
 
-def branch(funcs, save_iterator=True):
+def branch(funcs, save_iterator=True, strictly_one=False):
     """
     Create a parser that will try given parsers in order and return the state
-    of the first successful one.
+    of the first successful one (unless 'strictly_one' is truthy, see below).
 
     If 'save_iterator' is truthy (the default), the parsers from the given
     iterator will be saved, allowing the resulting parser to be run several
@@ -238,11 +238,14 @@ def branch(funcs, save_iterator=True):
     iterable such as a list or a deque, you can pass False as 'save_iterator'
     to avoid memory overhead.
 
+    If 'strictly_one' is truthy, the branch will fail if more than one parser
+    succeeds. The default for this parameter is False.
+
     Note that branches inherit lookahead from the first parser inside them that
     has the capability, which in turn can influence also the parsers that do
     not perform lookahead normally.
     """
-    return _Branch(funcs, save_iterator)
+    return _Branch(funcs, save_iterator, strictly_one)
 
 
 def catch(parser, exception_types, on_thrown=None, on_not_thrown=None):
@@ -648,57 +651,89 @@ def _try_chain(parsers, from_pos, num_prelookahead, effect_points):
 class _Branch():
     """ A parser trying several alternative parsers. """
 
-    def __init__(self, funcs, save_iterator):
+    def __init__(self, funcs, save_iterator, strictly_one):
+        self.successful = deque() if strictly_one else None
         if save_iterator:
             self.saved = deque()
             self.parsers = iter(funcs)
         else:
             self.saved = None
             self.parsers = funcs
+        self.saved_length = -1
+        self.iterator = None
 
     def __call__(self, state):
         return self.parse(state)
 
-    def parse(self, state):
-        """ Parse the state using this branching point. """
+    #--------- helper things ---------#
+
+    def getnext(self):
+        """
+        Get the next pair of (index, parser).
+        Return None as both index and parser if there are no parsers left.
+        """
+        try:
+            return next(self.iterator)
+        except StopIteration:
+            return None, None
+
+    def prep_iterator(self):
+        """ Prepare the iterator with parsers and their indices. """
         if self.saved is None:
-            iterator = enumerate(self.parsers)
-            saved_len = -1
+            self.iterator = enumerate(self.parsers)
+            self.saved_length = -1
         else:
             copy = self.saved.copy()
-            iterator = enumerate(it.chain(copy, self.parsers))
-            saved_len = len(self.saved)
-        try:
-            i, parser = next(iterator)
-        except StopIteration:
-            raise ParsingFailure(
-                state,
-                "Empty branching point",
-                error.BranchError.EMPTY)
-        while True:
+            self.iterator = enumerate(it.chain(copy, self.parsers))
+            self.saved_length = len(self.saved)
+
+    #--------- main method ---------#
+
+    def parse(self, state):
+        """ Parse the state using this branching point. """
+        self.prep_iterator()
+        if self.successful is not None:
+            self.successful.clear()
+        i, parser = self.getnext()
+        empty = i is None
+        while parser is not None:
             if no_lookahead(self) and has_lookahead(parser):
                 copy_lookahead(parser, self)
                 raise _GainedLookahead
-            if i >= saved_len and self.saved is not None:
+            if i >= self.saved_length and self.saved is not None:
                 self.saved.append(parser)
             try:
-                return parser(state)
+                after = parser(state)
+                if self.successful is None:
+                    return after
+                self.successful.append(after)
+                i, parser = self.getnext()
             except ParsingEnd as end:
                 return end.state
             except ParsingFailure:
-                try:
-                    i, parser = next(iterator)
-                except StopIteration:
-                    break
+                i, parser = self.getnext()
             except _GainedLookahead:
                 if no_lookahead(self):
                     copy_lookahead(parser, self)
                     raise
                 continue
-        raise ParsingFailure(
-            state,
-            "All parsers in a branching point have failed",
-            error.BranchError.ALL_FAILED)
+        length = 0 if self.successful is None else len(self.successful)
+        if empty:
+            raise ParsingFailure(
+                state,
+                "Empty branching point",
+                error.BranchError.EMPTY)
+        if length == 0:
+            raise ParsingFailure(
+                state,
+                "All parsers in a branching point have failed",
+                error.BranchError.ALL_FAILED)
+        if length > 1:
+            raise ParsingFailure(
+                state,
+                "More than one parser succeeded in strict mode",
+                error.BranchError.MORE_THAN_ONE_SUCCEEDED)
+        return self.successful[0]
 
 
 class _CachedAppender():
