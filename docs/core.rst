@@ -75,9 +75,10 @@ functions.
 
 The signature: ::
 
-        branch(iterable_of_parsers, save_iterator=True)
+        branch(iterable_of_parsers, save_iterator=True, strictly_one=False)
 This function returns a parser that will try each of parsers in the iterable in
-order and return the state of the first successful one.
+order and return the state of the first successful one, unless ``strictly_one``
+is true, see below.
 
 If ``save_iterator`` is true, the parsers in the supplied iterator will be
 saved, allowing to safely reuse the resulting parser - otherwise there is a 
@@ -85,6 +86,9 @@ danger of the iterator being consumed on the first run, leaving nothing for
 future runs. This, however, leads to higher memory consumption, and is
 unnecessary if you already use a reusable iterable such as a list or a deque.
 You can disable saving by passing False as this parameter.
+
+If ``strictly_one`` is true, all parsers in the iterable will be tried, and the
+branching point will fail both if none and more than one were successful.
 
 ``catch``
 ---------
